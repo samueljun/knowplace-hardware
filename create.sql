@@ -5,18 +5,19 @@ CREATE TABLE Users (
     email VARCHAR(50)
 );
 CREATE TABLE Hubs (
-    hub_id INT PRIMARY KEY,
+    hub_id VARCHAR(30) PRIMARY KEY,
     user_id INT NOT NULL,
     name VARCHAR(50)
 );
 CREATE TABLE Nodes (
-    node_id INT PRIMARY KEY,
-    hub_id INT NOT NULL,
+    node_id VARCHAR(30) PRIMARY KEY,
+    hub_id VARCHAR(30) NOT NULL,
     name VARCHAR(50)
 );
 CREATE TABLE Node_Data (
-    node_id INT NOT NULL,
+    node_id VARCHAR(30) NOT NULL,
     data_type VARCHAR(10) NOT NULL,
     data_point VARCHAR(50) NOT NULL,
     time TIMESTAMP NOT NULL,
 );
+
