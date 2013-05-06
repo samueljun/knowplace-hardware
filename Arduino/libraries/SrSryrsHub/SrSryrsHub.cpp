@@ -1,19 +1,51 @@
 #include "HubVars.h"
 #include "SrSryrsHub.h"
 
+XBeeIOData::XBeeIOData()
+{
+    init();
+//    for(int i = 0; i < 12; i++)
+//    {
+//        digital[iter] = -1;
+//    }
+//    for(int i = 0; i < 4; i++)
+//    {
+//        analog[i] = -1;
+//    }
+}
 
-SrSryrsHub::SrSryrsHub() 
-		      : lcd(LCD_RS, LCD_RW, LCD_Enable, LCD_D4, LCD_D5, LCD_D6, LCD_D7)
+void XBeeIOData::init()
+{
+    for(int i = 0; i < 12; i++)
+    {
+        digital[i] = -1;
+    }
+    for(int i = 0; i < 4; i++)
+    {
+        analog[i] = -1;
+    }
+}
+
+void XBeeIOData::clear()
+{
+    //just for readability 
+    init();
+}
+SrSryrsHub::SrSryrsHub()
+		      :hubSerial(Serial)
+            ,lcd(LCD_RS, LCD_RW, LCD_Enable, LCD_D4, LCD_D5, LCD_D6, LCD_D7)
+            ,xbee(XBee())
+            ,remoteAtRequest(RemoteAtCommandRequest(xba64, NULL, NULL, sizeof(NULL)))
+            ,remoteAtResponse(RemoteAtCommandResponse())
+            ,ioSample(ZBRxIoSampleResponse())
 			,ip(IP0, IP1, IP2, IP3)
             ,cosmAPIKey(COSM_API_KEY)
             ,cosmUserAgent(COSM_USER_AGENT)
-//            ,cosmServer(COSM_IP0, COSM_IP1, COSM_IP2, COSM_IP3)//(216,52,233,122)
+            ,cosmServer(COSM_IP0, COSM_IP1, COSM_IP2, COSM_IP3)//(216,52,233,122)
             ,cosmClient(client)
             ,cosmShareFeed(COSM_SHARE_FEED_ID, cosmShareDataStreams, 1)
-//            ,cosmShareFeed(COSM_SHARE_FEED_ID, &CosmDatastream("what", strlen("what"), DATASTREAM_INT), 1)
             ,cosmControlFeed(COSM_CONTROL_FEED_ID, cosmControlDataStreams, 1)
-//            ,receivedRemoteAddress(0x0013a200, 0x40315565)
-            ,hubSerial(Serial)
+            
 //            ,postingInterval(COSM_POSTINGINTERVAL)
 //			,server(SERVER_NUM)
 {
@@ -30,9 +62,7 @@ SrSryrsHub::SrSryrsHub()
     ////////////////////////
     /////     XBee     /////
     ////////////////////////
-    for(int iter = 0; iter < 4; iter++){
-        analogValue[iter] = 0;
-    }
+//
     
     ////////////////////////////
     /////     Ethernet     /////
@@ -43,40 +73,14 @@ SrSryrsHub::SrSryrsHub()
     mac[3] = MAC_3;
     mac[4] = MAC_4;
     mac[5] = MAC_5;
-
-    
     
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
-//    lastConnected = false;
-//    cosmLastPutTime = 0;
-//    cosmLastGetTime = 0;
-//    cosmAPIKey = COSM_API_KEY;
+ 
     cosmControlVar = 0;
     cosmShareFeedID = COSM_SHARE_FEED_ID;
     cosmControlFeedID = COSM_CONTROL_FEED_ID;
-//    cosmUserAgent = COSM_USER_AGENT;
-    
-//    char temperatureId[] = "temperature";
-//    datastreams[1] = CosmDatastream(temperatureId, strlen(temperatureId), DATASTREAM_FLOAT);
-    /*//start pachube example copy
-    found_status_200 = false;
-    found_session_id = false;
-    found_control_values = false;
-
-    successes = 0;
-    failures = 0;
-    ready_to_update = true;
-    reading_pachube = false;
-    
-    request_pause = false;
-    found_content = false;
-    
-    found_d = false;
-    found_a = false;
-    
-    *///end pachube exapmle copy
 
 }
 
@@ -88,6 +92,7 @@ void SrSryrsHub::init()
     Serial.begin(SERIAL_BAUD);
     hubSerial = Serial;
 #else
+    //because the xbee uses the regular serial port, create a software serial connection for debuggin
     SoftwareSerial ss(SSRX,SSTX); //SSRX == 2, SSTX == 3 by default
     ss.begin(SERIAL_BAUD);
     hubSerial = ss;//TODO verify that these pins are open
@@ -97,28 +102,52 @@ void SrSryrsHub::init()
     lcd.begin(LCD_ROWS, LCD_COLS);
     
     //XBee
+
     xbee.begin(XBEE_BAUD);
-    //xbee.setSerial(); //here just so you know it's an option 
+    //xbee.setSerial(); //here just so you know it's an option
     
     //Ethernet
-    if (Ethernet.begin(mac) == 0) {
-        hubSerial.println("Failed to configure Ethernet using DHCP");
-        // DHCP failed, so use a fixed IP address:
-        Ethernet.begin(mac, ip);
+//    if (Ethernet.begin(mac) == 0) {
+//        hubSerial.println("Failed to configure Ethernet using DHCP");
+//        // DHCP failed, so use a fixed IP address:
+//        Ethernet.begin(mac, ip);
+//    }
+}
+////////////////////////
+//////     LCD     /////
+////////////////////////
+
+//prints leading zeros of four digit analog values
+//should only be used for 4 digits (assumed max of 1023)
+//could be made more general
+//maybe there's already an lcd print function that prints leading zeros
+void SrSryrsHub::lcdPrintAnalog(int analog)
+{
+    if(analog < 0)
+    {
+        lcd.print("__-1");
     }
-
-
-    
-    
+    else if(analog < 10000)
+    {
+        if(analog < 1000) lcd.print("0");
+        if(analog < 100 ) lcd.print("0");
+        if(analog < 10  ) lcd.print("0");
+        lcd.print(analog);
+    }
+    else lcd.print(">MAX");
 }
 
-void SrSryrsHub::xbeeSetCommand(uint8_t cmd[2])
+////////////////////////
+/////     XBee     /////
+////////////////////////
+
+void SrSryrsHub::xbeeSetCommand(uint8_t *cmd)
 {
     remoteAtRequest.clearCommandValue();
     remoteAtRequest.setCommand(cmd);
 }
 
-void SrSryrsHub::xbeeSetCommand(uint8_t cmd[2], uint8_t *value, uint8_t valueLength)
+void SrSryrsHub::xbeeSetCommand(uint8_t *cmd, uint8_t *value, uint8_t valueLength)
 {
     remoteAtRequest.clearCommandValue();
     remoteAtRequest.setCommand(cmd);
@@ -128,25 +157,41 @@ void SrSryrsHub::xbeeSetCommand(uint8_t cmd[2], uint8_t *value, uint8_t valueLen
 
 void SrSryrsHub::xbeeSendRemoteAtCommand() {
     hubSerial.println("Sending command to the XBee");
-    
+
     // send the command
     xbee.send(remoteAtRequest);
-    
+    //todo check for command sent
 }
 
-//this is a specific form of response
-//It should only be called when no other response types are cared for.
-boolean SrSryrsHub::xbeeReceiveRemoteAtResponse(){
-    // wait up to 5 seconds for the status response
-    //TODO make this more general to allow for receiving I/O
-    boolean ret = false;
+
+//for the cases where the response is just a confirmation, no data included
+void SrSryrsHub::xbeeReceiveRemoteAtResponse() {
+    int tempVar = 0;
+    xbeeReceiveRemoteAtResponse(tempVar);
+}
+
+//for use when issuing and IS remoteAtCommand and data is sent back as a reponse
+void SrSryrsHub::xbeeReceiveRemoteAtResponse(int &ioData) {
+    //  hubSerial.println("Sending command to the XBee");
     
+    // send the command
+    //  xbee.send(remoteAtRequest);
+    
+    // wait up to 5 seconds for the status response
     if (xbee.readPacket(5000)) {
         // got a response!
         
         // should be an AT command response
         if (xbee.getResponse().getApiId() == REMOTE_AT_COMMAND_RESPONSE) {
             xbee.getResponse().getRemoteAtCommandResponse(remoteAtResponse);
+            
+            //ryan's test
+            hubSerial.print("Received I/O Sample from: ");
+            
+            hubSerial.print(remoteAtResponse.getRemoteAddress64().getMsb(), HEX);
+            hubSerial.print("  ");
+            hubSerial.println(remoteAtResponse.getRemoteAddress64().getLsb(), HEX);
+            //end ryan's test
             
             if (remoteAtResponse.isOk()) {
                 hubSerial.print("Command [");
@@ -167,14 +212,13 @@ boolean SrSryrsHub::xbeeReceiveRemoteAtResponse(){
                     
                     int analogHigh = remoteAtResponse.getValue()[4] ;
                     int analogLow = remoteAtResponse.getValue()[5] ;
-                    analogValue[0] = (analogHigh<<8) + analogLow;
+                    ioData = (analogHigh<<8) + analogLow;
                     
                     hubSerial.print("analogValue: ");
-                    hubSerial.print(analogValue[0]);
+                    hubSerial.print(ioData);
                     
                     hubSerial.println("");
                 }
-                ret = true;
             } else {
                 hubSerial.print("Command returned error code: ");
                 hubSerial.println(remoteAtResponse.getStatus(), HEX);
@@ -186,27 +230,23 @@ boolean SrSryrsHub::xbeeReceiveRemoteAtResponse(){
     } else {
         // remote at command failed
         if (xbee.getResponse().isError()) {
-            hubSerial.print("Error reading packet.  Error code: ");
+            hubSerial.print("Error reading packet.  Error code: ");  
             hubSerial.println(xbee.getResponse().getErrorCode());
         } else {
-            hubSerial.print("No response from radio");
+            hubSerial.print("No response from radio");  
         }
     }
-    return ret;
 }
 
-void SrSryrsHub::xbeeForceSampleRequest(XBeeAddress64 *remoteAddress)
-{
-    remoteAtRequest.setRemoteAddress64(*remoteAddress);
-    uint8_t isCmd[2] = {'I', 'S'};
-    xbeeSetCommand(isCmd);
-    xbeeSendRemoteAtCommand();
-    xbeeReceiveRemoteAtResponse();
-}
 
-void SrSryrsHub::xbeeReceiveIOData()
+
+
+/*
+ boolean SrSryrsHub::xbeeReceiveIOData(XBeeIOData &ioData) //todo iodata
 {
     xbee.readPacket();
+    
+    int ret = 0; //return status
     
     if (xbee.getResponse().isAvailable()) {
         // got something
@@ -220,6 +260,9 @@ void SrSryrsHub::xbeeReceiveIOData()
             hubSerial.print(ioSample.getRemoteAddress64().getLsb(), HEX);
             hubSerial.println("");
             
+            //todo, don't know if ret should only be true if something was returned
+            //it's possible that there's an IO with no pins configured
+            ret = true; 
             if (ioSample.containsAnalog()) {
                 hubSerial.println("Sample contains analog data");
             }
@@ -235,7 +278,7 @@ void SrSryrsHub::xbeeReceiveIOData()
                     hubSerial.print(i, DEC);
                     hubSerial.print(") is ");
                     hubSerial.println(ioSample.getAnalog(i), DEC);
-                    analogValue[i] = ioSample.getAnalog(i);
+                    ioData.analog[i] = ioSample.getAnalog(i);
                 }
             }
             
@@ -246,6 +289,7 @@ void SrSryrsHub::xbeeReceiveIOData()
                     hubSerial.print(i, DEC);
                     hubSerial.print(") is ");
                     hubSerial.println(ioSample.isDigitalOn(i), DEC);
+                    ioData.digital[i] = ioSample.isDigitalOn(i);
                 }
             }
             
@@ -266,29 +310,41 @@ void SrSryrsHub::xbeeReceiveIOData()
         hubSerial.print("Error reading packet.  Error code: ");  
         hubSerial.println(xbee.getResponse().getErrorCode());
     }
+    
+    return ret;
+}
+*/
+
+void SrSryrsHub::xbeeForceSampleRequest(XBeeAddress64 &remoteAddress, int &ioData)//todo iodata
+{
+    //todo check to see if pass by reference is fine, or if it should be a pointer
+    //pass by reference is readable
+    remoteAtRequest.setRemoteAddress64(remoteAddress);
+    uint8_t isCmd[2] = {'I', 'S'}; //IS command requests IO sample
+    xbeeSetCommand(isCmd);
+    xbeeSendRemoteAtCommand();
+    xbeeReceiveRemoteAtResponse(ioData);
 }
 
-void SrSryrsHub::xbeeSwitchNodePin0(XBeeAddress64 remoteAddress,boolean onOff)
+void SrSryrsHub::xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData)
 {
-    char cmd[] = {'D','0'};
-    //input 0 gives command value 4 (digital low)
-    //input 1 gives command value 5 (digital high)
-    char cmdVal[] = {4 + onOff};
-    do{
-    xbeeSetCommand(cmd, cmdVal, sizeof(cmdVal));
-    }while(xbeeReceiveRemoteAtResponse() == 0);
+    //todo make this more intuitive
+    //passing 4s and 5s doens't make sense
+    //maybe limit this to 0s and 1s where 0 is off and 1 is on
+    //limit pin set 2 for pins 0-3
+    remoteAtRequest.setRemoteAddress64(remoteAddress);
+    uint8_t dCmd[2] = {'D', '0'}; //IS command requests IO sample
+    uint8_t dVal[] = {4};
+    if(ioData != -1)
+    {
+        dVal[0] = ioData; //todo check if it's a valid value
+        remoteAtRequest.clearCommandValue();
+        xbeeSetCommand((uint8_t *)dCmd, (uint8_t *)dVal, sizeof(dVal));
+        xbeeSendRemoteAtCommand();
+        xbeeReceiveRemoteAtResponse();
+    }
 }
 
-void SrSryrsHub::xbeeSwitchNodePin0(XBeeAddress64 remoteAddress, char pins)
-{
-    //TODO complete
-//    char cmd[] = {'D','0'};
-//    char cmdVal[] = {0x4};
-//    for (int iter = 0; iter < 4; iter++, cmd[1]++) {
-//        xbeeSetCommand(cmd, &(cmd[0] + ));
-//    }
-}
-                           
 ////////////////////////
 /////     COSM     /////
 ////////////////////////

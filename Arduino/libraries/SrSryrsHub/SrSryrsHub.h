@@ -60,6 +60,15 @@ static CosmDatastream cosmControlDataStreams[] = {
 };
 //end bad method
 
+class XBeeIOData {
+public:
+    XBeeIOData(); //initializes to -1
+    void init();
+    void clear();
+    
+    int digital[12];//could change to two bytes to save memory
+    int analog[4];
+};
 
 class SrSryrsHub {
 public:
@@ -81,23 +90,23 @@ public:
     LiquidCrystal lcd;
 #endif
     
+    void lcdPrintAnalog(int analog);
+    
 	////////////////////////
     /////     XBee     /////
     ////////////////////////
-    int analogValue[4]; 	//received either from "IS" command or I/O received
-
     
     void xbeeSendRemoteAtCommand();
-    boolean xbeeReceiveRemoteAtResponse();
-    void xbeeForceSampleRequest(XBeeAddress64 *remoteAddress);
-    void xbeeReceiveIOData();
-    void xbeeSwitchNodePin0(XBeeAddress64 *remoteAddress, boolean onOff);
-    void xbeeSwitchNodePins(XBeeAddress64 *remoteAddress, char pins /*stored in first four bits*/);
+    void xbeeReceiveRemoteAtResponse();
+    void xbeeReceiveRemoteAtResponse(int &ioData);
+//    void xbeeReceiveIOData(int &ioData);
+    void xbeeForceSampleRequest(XBeeAddress64 &remoteAddress, int &ioData);
+    void xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData);
     
 	////////////////////////////
     /////     Ethernet     /////
     ////////////////////////////
-	IPAddress ip; //TODO check if this can be private
+	
 	EthernetClient client;
     
     
@@ -125,23 +134,20 @@ private:
     /////     XBee     /////
     ////////////////////////
 	XBee xbee;
-    //used for storing incomming IO address before sending to database
-    //probably redundant because the request and response variable
-    //  have an address component
-//	XBeeAddress64 receivedRemoteAddress; 
+    XBeeAddress64 xba64;
     RemoteAtCommandRequest remoteAtRequest;
 	RemoteAtCommandResponse remoteAtResponse;
     ZBRxIoSampleResponse ioSample;
 
 	    
-    void xbeeSetCommand(uint8_t cmd_set[2]);
-    void xbeeSetCommand(uint8_t cmd_set[2], uint8_t *value_set, uint8_t valueLength_set);
+    void xbeeSetCommand(uint8_t *cmd_set);
+    void xbeeSetCommand(uint8_t *cmd_set, uint8_t *value_set, uint8_t valueLength_set);
 
     ////////////////////////////
     /////     Ethernet     /////
     ////////////////////////////
 	byte mac[6];
-    
+    IPAddress ip; //TODO check if this can be private
     
     ////////////////////////
     /////     COSM     /////
