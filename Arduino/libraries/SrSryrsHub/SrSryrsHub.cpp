@@ -405,13 +405,15 @@ String SrSryrsHub::ethernetConnectAndRead(){
 }
 
 String SrSryrsHub::ethernetReadPage(){
-    //read the page, and capture & return everything between '<' and '>'
+    //read the page, and capture & return everything between '[' and ']'
     
     stringPos = 0;
     memset( &inString, 0, 32 ); //clear inString memory
     count = 0;
     boolean settingVariable = true;
     
+    hubSerial.println("Entering while true loop");
+
     while(true){
         if (client.available()) {
             hubSerial.println("Client is available");
@@ -423,12 +425,12 @@ String SrSryrsHub::ethernetReadPage(){
                     return "End";
                 } else
                     
-                    if (c == '[' ) { //'<' is our begining character
+                    if (c == '[' ) { //'[' is our begining character
                         startRead = true; //Ready to start reading the part
                         memset( &inString, 0, 32 );
                         stringPos = 0;
                     } else if(startRead){
-                        if(c != ']'){ //'>' is our ending character
+                        if(c != ']'){ //']' is our ending character
                             //Serial.print(c);
                             inString[stringPos] = c;
                             stringPos ++;
@@ -470,6 +472,9 @@ String SrSryrsHub::ethernetReadPage(){
                         } 
                     }
             }
+        } else {
+            hubSerial.println("Client is not available");
+            delay(5000);
         }
     }
 }
@@ -483,6 +488,24 @@ void SrSryrsHub::ethernetScrapeWebsite()
         hubSerial.println(variable[i]);
         hubSerial.println(value[i]);
     }
+}
+
+int SrSryrsHub::getDeviceStatus(int id)
+{
+    int numDevices = count % 3; //Count is the number of entries. 
+                                //Currently there are three variables per device
+                                //lampStatus, lampStatusTime, lampAddress
+    int i;
+    for(i = 0; i < numDevices; i++ )
+    {
+        if(value[i].toInt() == id) 
+        {
+            return value[ 0 + i*numDevices];
+        }
+    }
+
+    return -1; // Did not find device with id
+
 }
 ////////////////////////
 /////     COSM     /////

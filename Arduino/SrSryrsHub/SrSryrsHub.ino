@@ -49,11 +49,11 @@ void setup()
   hub.lcd.print("KnowPlace v1.0");
 pinMode(INTERNAL_LED, OUTPUT);
 
-delay(5000);
+//delay(5000);
 
 //initialize the pin0 of the sensor node to analog input
 int pinVal = 0x2;
-hub.xbeeControlRemotePins(xbeeNodeAddress[0], pinVal);
+//hub.xbeeControlRemotePins(xbeeNodeAddress[0], pinVal);
 }
 
 void loop()

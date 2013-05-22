@@ -40,7 +40,7 @@
 #include <HttpClient.h>
 
 //Cosm
-#define USING_COSM
+//#define USING_COSM
 #ifdef USING_COSM
 #include <Cosm.h>
 #endif
@@ -168,6 +168,8 @@ private:
     String value[32];
     int stringPos;
     int count;
+
+    int getDeviceStatus(int id);
     
     ////////////////////////
     /////     COSM     /////
