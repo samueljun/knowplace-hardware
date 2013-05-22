@@ -105,6 +105,8 @@ static HardwareSerial Uart = HardwareSerial();
 
 #define SERVER_NUM 80
 
+#define KNOWPLACE_SERVER "limitless-headland-1164.herokuapp.com"
+
 ////////////////////////
 /////     COSM     /////
 ////////////////////////

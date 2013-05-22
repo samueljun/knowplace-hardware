@@ -40,7 +40,7 @@
 #include <HttpClient.h>
 
 //Cosm
-#define USING_COSM
+//#define USING_COSM
 #ifdef USING_COSM
 #include <Cosm.h>
 #endif
@@ -52,15 +52,15 @@
 //TODO I really don't like this method, want to do it in the constructor
 //star bad method
 #ifdef USING_COSM
-//static char cosmShareStreamId[] = COSM_SHARE_STREAM_ID;
-//static CosmDatastream cosmShareDataStreams[] = {
-//    CosmDatastream(cosmShareStreamId, strlen(cosmShareStreamId), DATASTREAM_INT),
-//};
-//
-//static char cosmControlStreamId[] = COSM_CONTROL_STREAM_ID;
-//static CosmDatastream cosmControlDataStreams[] = {
-//    CosmDatastream(cosmControlStreamId, strlen(cosmControlStreamId), DATASTREAM_INT),
-//};
+static char cosmShareStreamId[] = COSM_SHARE_STREAM_ID;
+static CosmDatastream cosmShareDataStreams[] = {
+    CosmDatastream(cosmShareStreamId, strlen(cosmShareStreamId), DATASTREAM_INT),
+};
+
+static char cosmControlStreamId[] = COSM_CONTROL_STREAM_ID;
+static CosmDatastream cosmControlDataStreams[] = {
+    CosmDatastream(cosmControlStreamId, strlen(cosmControlStreamId), DATASTREAM_INT),
+};
 //end bad method
 #endif //USING_COSM
 
@@ -114,9 +114,7 @@ public:
 
 	EthernetClient client;
     
-    String ethernetConnectAndRead();
-    String ethernetReadPage();
-    void ethernetScrapeWebsite();
+    
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
@@ -158,17 +156,6 @@ private:
 	byte mac[6];
     IPAddress ip; //TODO check if this can be private
     
-    //Roger's function
-    boolean startRead;
-    boolean readingFirst;
-    char inString[32];
-    char *server;
-    String location;
-    String variable[32];
-    String value[32];
-    int stringPos;
-    int count;
-    
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
@@ -185,12 +172,8 @@ private:
     IPAddress cosmServer;
          
     //made these global constanst for initializing reasons
-    char *cosmShareStreamId;
-    CosmDatastream cosmShareDataStream1;
-    CosmDatastream *cosmShareDataStreams;
-    char *cosmControlStreamId;
-    CosmDatastream cosmControlDataStream1;
-    CosmDatastream *cosmControlDataStreams;
+    //    CosmDatastream cosmShareDataStreams[1];
+    //    CosmDatastream cosmControlDataStreams[1];
 #endif //USING_COSM
 };
 

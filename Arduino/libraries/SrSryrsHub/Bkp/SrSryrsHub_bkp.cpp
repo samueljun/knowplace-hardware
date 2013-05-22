@@ -39,18 +39,11 @@ SrSryrsHub::SrSryrsHub()
             ,remoteAtResponse(RemoteAtCommandResponse())
             ,ioSample(ZBRxIoSampleResponse())
 			,ip(IP0, IP1, IP2, IP3)
-            ,server(KNOWPLACE_SERVER)
 #ifdef USING_COSM
             ,cosmAPIKey(COSM_API_KEY)
             ,cosmUserAgent(COSM_USER_AGENT)
             ,cosmServer(COSM_IP0, COSM_IP1, COSM_IP2, COSM_IP3)//(216,52,233,122)
             ,cosmClient(client)
-            ,cosmShareStreamId(COSM_SHARE_STREAM_ID)
-            ,cosmControlStreamId(COSM_CONTROL_STREAM_ID)
-            ,cosmShareDataStream1(cosmShareStreamId, strlen(cosmShareStreamId), DATASTREAM_INT)
-            ,cosmControlDataStream1(cosmControlStreamId, strlen(cosmControlStreamId), DATASTREAM_INT)
-            ,cosmShareDataStreams(&cosmShareDataStream1)
-            ,cosmControlDataStreams(&cosmControlDataStream1)
             ,cosmShareFeed(COSM_SHARE_FEED_ID, cosmShareDataStreams, 1)
             ,cosmControlFeed(COSM_CONTROL_FEED_ID, cosmControlDataStreams, 1)
 #endif //USING_COSM
@@ -82,11 +75,6 @@ SrSryrsHub::SrSryrsHub()
     mac[4] = MAC_4;
     mac[5] = MAC_5;
     
-    startRead = false;
-    readingFirst = true;
-    stringPos = 0;
-    count = 0;
-    
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
@@ -94,15 +82,6 @@ SrSryrsHub::SrSryrsHub()
     cosmControlVal = 0;
     cosmShareFeedID = COSM_SHARE_FEED_ID;
     cosmControlFeedID = COSM_CONTROL_FEED_ID;
-    
-//    cosmShareDataStreams[0] = malloc(sizeof(CosmDatastream));
-//    CosmDatastream CosmDatastreamTemp1(cosmShareStreamId, strlen(cosmShareStreamId), DATASTREAM_INT);
-//    cosmShareDataStreams = &CosmDatastreamTemp1;
-//    
-//    cosmControlDataStreams[0] = malloc(sizeof(CosmDatastream));
-//    CosmDatastream CosmDatastreamTemp2(cosmControlStreamId, strlen(cosmControlStreamId), DATASTREAM_INT);
-//    cosmControlDataStreams = &CosmDatastreamTemp2;
-
 #endif USING_COSM
 
 }
@@ -340,7 +319,6 @@ void SrSryrsHub::xbeeReceiveRemoteAtResponse(int &ioData) {
 }
 */
 
-
 void SrSryrsHub::xbeeForceSampleRequest(XBeeAddress64 &remoteAddress, int &ioData)//todo iodata
 {
     //todo check to see if pass by reference is fine, or if it should be a pointer
@@ -371,108 +349,6 @@ void SrSryrsHub::xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData
     }
 }
 
-
-////////////////////////////
-/////     Ethernet     /////
-////////////////////////////
-
-String SrSryrsHub::ethernetConnectAndRead(){
-    //connect to the server
-    
-    //Initialize client
-    client.stop();
-    client.flush();
-    Serial.println("connecting...");
-    
-    //port 80 is typical of a www page
-    if (client.connect(server, 80)) {
-        Serial.println("connected");
-        client.println("GET /testlamp HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-        //    client.println("GET /arduino HTTP/1.1");
-        //    client.println("Host: mrlamroger.bol.ucla.edu");
-        client.println("Connection: close");
-        client.println();
-        
-        //Connected - Read the page
-        return ethernetReadPage(); //go and read the output
-        
-        
-    }else{
-        Serial.println("connection failed");
-    }
-    
-}
-
-String SrSryrsHub::ethernetReadPage(){
-    //read the page, and capture & return everything between '<' and '>'
-    
-    stringPos = 0;
-    memset( &inString, 0, 32 ); //clear inString memory
-    count = 0;
-    
-    while(true){
-        if (client.available()) {
-            Serial.println("Client is available");
-            while (char c = client.read()) {
-                if (c == '>') {
-                    client.stop();
-                    client.flush();
-                    Serial.println("disconnecting.");
-                    return "End";
-                } else
-                    
-                    if (c == '[' ) { //'<' is our begining character
-                        startRead = true; //Ready to start reading the part
-                        memset( &inString, 0, 32 );
-                        stringPos = 0;
-                    } else if(startRead){
-                        if(c != ']'){ //'>' is our ending character
-                            //Serial.print(c);
-                            inString[stringPos] = c;
-                            stringPos ++;
-                        } else {
-                            //          Serial.println(inString);
-                            //          //got what we need here! We can disconnect now
-                            //          if(readingFirst){
-                            //            String temp = inString;
-                            //            Serial.println(temp);
-                            //            variable[count] = inString;
-                            //            readingFirst = false;
-                            //          } else {
-                            //            String temp = inString;
-                            //            Serial.println(temp);
-                            //            value[count] = temp;
-                            //            readingFirst = true;
-                            //          }            
-                            //          startRead = false;
-                            
-                            variable[count] = inString;
-                            //Serial.println(variable[count]);
-                            count = count + 1;
-                            //memset( &inString, 0, 32 );
-                            //Serial.println("Test");
-                            startRead = false;
-                            //client.stop();
-                            //client.flush();
-                            //Serial.println("disconnecting.");
-                            //return variable[count - 1];
-                        } 
-                    }
-            }
-        }
-    }
-}
-
-void SrSryrsHub::ethernetScrapeWebsite()
-{
-    String pageValue = ethernetConnectAndRead();
-    hubSerial.println(pageValue);
-    for (int i = 0; i < count; i++)
-    {
-        hubSerial.println(variable[i]);
-    }
-}
 ////////////////////////
 /////     COSM     /////
 ////////////////////////
