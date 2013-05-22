@@ -38,16 +38,16 @@
 #include <EthernetUdp.h>
 #include <util.h>
 #include <HttpClient.h>
+#include <SPI.h>
 
 //Cosm
-#define USING_COSM
+//#define USING_COSM
 #ifdef USING_COSM
 #include <Cosm.h>
 #endif
 //push-notifications
 //#include <Avviso.h>
 
-//#define USINGETHERNET
 
 //TODO I really don't like this method, want to do it in the constructor
 //star bad method
@@ -63,6 +63,9 @@
 //};
 //end bad method
 #endif //USING_COSM
+
+
+
 
 class XBeeIOData {
 public:
@@ -113,10 +116,12 @@ public:
     ////////////////////////////
 
 	EthernetClient client;
-    
+    byte mac[6];
+    IPAddress ip; //TODO check if this can be private
     String ethernetConnectAndRead();
     String ethernetReadPage();
     void ethernetScrapeWebsite();
+    
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
@@ -155,14 +160,13 @@ private:
     ////////////////////////////
     /////     Ethernet     /////
     ////////////////////////////
-	byte mac[6];
-    IPAddress ip; //TODO check if this can be private
+
     
     //Roger's function
     boolean startRead;
     boolean readingFirst;
     char inString[32];
-    char *server;
+    char server[38];
     String location;
     String variable[32];
     String value[32];

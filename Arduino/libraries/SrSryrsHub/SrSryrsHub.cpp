@@ -39,7 +39,6 @@ SrSryrsHub::SrSryrsHub()
             ,remoteAtResponse(RemoteAtCommandResponse())
             ,ioSample(ZBRxIoSampleResponse())
 			,ip(IP0, IP1, IP2, IP3)
-            ,server(KNOWPLACE_SERVER)
 #ifdef USING_COSM
             ,cosmAPIKey(COSM_API_KEY)
             ,cosmUserAgent(COSM_USER_AGENT)
@@ -86,6 +85,9 @@ SrSryrsHub::SrSryrsHub()
     readingFirst = true;
     stringPos = 0;
     count = 0;
+    strcpy(server,"limitless-headland-1164.herokuapp.com" );
+    location = "/testlamp HTTP/1.0";
+    
     
     ////////////////////////
     /////     COSM     /////
@@ -130,13 +132,13 @@ void SrSryrsHub::init()
     //xbee.setSerial(); //here just so you know it's an option
     
 //Ethernet
-#ifdef USINGETHERNET
+
     if (Ethernet.begin(mac) == 0) {
         hubSerial.println("Failed to configure Ethernet using DHCP");
         // DHCP failed, so use a fixed IP address:
         Ethernet.begin(mac, ip);
     }
-#endif //USINGETHERNET
+
 }
 ////////////////////////
 //////     LCD     /////
@@ -484,6 +486,8 @@ void SrSryrsHub::ethernetScrapeWebsite()
         hubSerial.println(value[i]);
     }
 }
+
+
 ////////////////////////
 /////     COSM     /////
 ////////////////////////
