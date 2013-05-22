@@ -386,7 +386,7 @@ String SrSryrsHub::ethernetConnectAndRead(){
     
     //port 80 is typical of a www page
     if (client.connect(server, 80)) {
-        Serial.println("connected");
+        hubSerial.println("connected");
         client.println("GET /testlamp HTTP/1.1");
         client.println("Host: limitless-headland-1164.herokuapp.com");
         //    client.println("GET /arduino HTTP/1.1");
@@ -399,7 +399,7 @@ String SrSryrsHub::ethernetConnectAndRead(){
         
         
     }else{
-        Serial.println("connection failed");
+        hubSerial.println("connection failed");
     }
     
 }
@@ -414,12 +414,12 @@ String SrSryrsHub::ethernetReadPage(){
     
     while(true){
         if (client.available()) {
-            Serial.println("Client is available");
+            hubSerial.println("Client is available");
             while (char c = client.read()) {
                 if (c == '>') {
                     client.stop();
                     client.flush();
-                    Serial.println("disconnecting.");
+                    hubSerial.println("disconnecting.");
                     return "End";
                 } else
                     
@@ -433,16 +433,16 @@ String SrSryrsHub::ethernetReadPage(){
                             inString[stringPos] = c;
                             stringPos ++;
                         } else {
-                            //          Serial.println(inString);
+                            //          hubSerial.println(inString);
                             //          //got what we need here! We can disconnect now
                             //          if(readingFirst){
                             //            String temp = inString;
-                            //            Serial.println(temp);
+                            //            hubSerial.println(temp);
                             //            variable[count] = inString;
                             //            readingFirst = false;
                             //          } else {
                             //            String temp = inString;
-                            //            Serial.println(temp);
+                            //            hubSerial.println(temp);
                             //            value[count] = temp;
                             //            readingFirst = true;
                             //          }            
