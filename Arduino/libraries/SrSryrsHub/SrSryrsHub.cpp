@@ -410,6 +410,7 @@ String SrSryrsHub::ethernetReadPage(){
     stringPos = 0;
     memset( &inString, 0, 32 ); //clear inString memory
     count = 0;
+    boolean settingVariable = true;
     
     while(true){
         if (client.available()) {
@@ -447,12 +448,21 @@ String SrSryrsHub::ethernetReadPage(){
                             //          }            
                             //          startRead = false;
                             
-                            variable[count] = inString;
+                            if (settingVariable == true) {
+                                variable[count] = inString;
+                                startRead = false;
+                                settingVariable = false;
+                            } else {
+                                value[count] = inString;
+                                startRead = false;
+                                count = count + 1;
+                                settingVariable = true;
+                            }
                             //Serial.println(variable[count]);
-                            count = count + 1;
+                            //count = count + 1;
                             //memset( &inString, 0, 32 );
                             //Serial.println("Test");
-                            startRead = false;
+                            //startRead = false;
                             //client.stop();
                             //client.flush();
                             //Serial.println("disconnecting.");
