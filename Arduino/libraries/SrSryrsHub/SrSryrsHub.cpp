@@ -481,6 +481,7 @@ void SrSryrsHub::ethernetScrapeWebsite()
     for (int i = 0; i < count; i++)
     {
         hubSerial.println(variable[i]);
+        hubSerial.println(value[i]);
     }
 }
 ////////////////////////
