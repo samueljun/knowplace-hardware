@@ -118,11 +118,11 @@ public:
 	EthernetClient client;
     byte mac[6];
     IPAddress ip; //TODO check if this can be private
-    String ethernetConnectAndRead();
+    String ethernetConnectAndRead(/*uint32_t*/int node_address);
     String ethernetReadPage();
-    void ethernetScrapeWebsite();
+    void ethernetScrapeWebsite(/*uint32_t*/int node_address);
     
-    int getDeviceStatus(int id);
+    int getDeviceStatus(/*uint32_t*/int node_address);
     
     ////////////////////////
     /////     COSM     /////

@@ -378,7 +378,7 @@ void SrSryrsHub::xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData
 /////     Ethernet     /////
 ////////////////////////////
 
-String SrSryrsHub::ethernetConnectAndRead(){
+String SrSryrsHub::ethernetConnectAndRead(/*uint32_t*/int node_address){
     //connect to the server
     
     //Initialize client
@@ -389,7 +389,9 @@ String SrSryrsHub::ethernetConnectAndRead(){
     //port 80 is typical of a www page
     if (client.connect(server, 80)) {
         hubSerial.println("connected");
-        client.println("GET /testlamp HTTP/1.1");
+        client.print("GET /testlamp?node_address=");
+        client.print(String(node_address));
+        client.println(" HTTP/1.1");
         client.println("Host: limitless-headland-1164.herokuapp.com");
         //    client.println("GET /arduino HTTP/1.1");
         //    client.println("Host: mrlamroger.bol.ucla.edu");
@@ -423,6 +425,7 @@ String SrSryrsHub::ethernetReadPage(){
                 if (c == '>') {
                     client.stop();
                     client.flush();
+                    hubSerial.println(inString);
                     hubSerial.println("disconnecting.");
                     return "End";
                 } else
@@ -481,9 +484,9 @@ String SrSryrsHub::ethernetReadPage(){
     }
 }
 
-void SrSryrsHub::ethernetScrapeWebsite()
+void SrSryrsHub::ethernetScrapeWebsite(/*uint32_t*/int node_address)
 {
-    String pageValue = ethernetConnectAndRead();
+    String pageValue = ethernetConnectAndRead(node_address);
     hubSerial.println(pageValue);
     for (int i = 0; i < count; i++)
     {
@@ -495,18 +498,22 @@ void SrSryrsHub::ethernetScrapeWebsite()
 //<<<<<<< HEAD
 //=======
 //>>>>>>> cf98246ed2ae4876dfaecc6ad4a9f6a5418e0afd
-int SrSryrsHub::getDeviceStatus(int id)
+int SrSryrsHub::getDeviceStatus(/*uint32_t*/int node_address)
 {
     int numDevices = count % 3; //Count is the number of entries.
     //Currently there are three variables per device
     //lampStatus, lampStatusTime, lampAddress
-    int i;
-    for(i = 0; i < numDevices; i++ )
+//    int i;
+//    for(i = 0; i < numDevices; i++ )
+//    {
+//        if(value[i].toInt() == node_address)
+//        {
+//            return (value[ 0 + i*numDevices]).toInt();
+//        }
+//    }
+    if (value[2] == node_address)
     {
-        if(value[i].toInt() == id)
-        {
-            return value[ 0 + i*numDevices];
-        }
+        return (value[0]).toInt();
     }
     
     return -1; // Did not find device with id
