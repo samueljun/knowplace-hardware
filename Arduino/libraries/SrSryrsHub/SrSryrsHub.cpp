@@ -408,6 +408,44 @@ String SrSryrsHub::ethernetConnectAndRead(/*uint32_t*/int node_address){
     
 }
 
+String ethernetConnectAndPost(/*uint32_t*/int node_address, /*uint32_t*/int data)
+{
+    //connect to the server
+    
+    //Initialize client
+    client.stop();
+    client.flush();
+    Serial.println("connecting...");
+    
+    //port 80 is typical of a www page
+    if (client.connect(server, 80)) {
+        hubSerial.println("connected");
+        client.print("POST /testlamp?node_address=");
+        client.print(String(node_address));
+        client.print("&data_value=");
+        client.print(String(data));
+        client.println(" HTTP/1.1");
+        client.println("Host: limitless-headland-1164.herokuapp.com");
+        //    client.println("GET /arduino HTTP/1.1");
+        //    client.println("Host: mrlamroger.bol.ucla.edu");
+        client.println("Connection: close");
+        client.println();
+
+        //Verify data was successfuly posted.
+        ethernetScrapeWebsite(node_address);
+        if (value[0].toInt() == data) 
+        {
+            return "Successfully Posted";
+        }
+        return "Post Failed"; //go and read the output
+        
+        
+    }else{
+        hubSerial.println("connection failed");
+    }
+    
+}
+
 String SrSryrsHub::ethernetReadPage(){
     //read the page, and capture & return everything between '[' and ']'
     

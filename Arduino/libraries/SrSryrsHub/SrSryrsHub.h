@@ -119,10 +119,13 @@ public:
     byte mac[6];
     IPAddress ip; //TODO check if this can be private
     String ethernetConnectAndRead(/*uint32_t*/int node_address);
+    String ethernetConnectAndPost(/*uint32_t*/int node_address, /*uint32_t*/int data);
+
     String ethernetReadPage();
     void ethernetScrapeWebsite(/*uint32_t*/int node_address);
-    
+
     int getDeviceStatus(/*uint32_t*/int node_address);
+
     
     ////////////////////////
     /////     COSM     /////
