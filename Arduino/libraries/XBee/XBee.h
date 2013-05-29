@@ -673,6 +673,7 @@ private:
 class XBee {
 public:
 	XBee();
+    XBee(Steam& serial);
 	// for eclipse dev only
 	void setSerial(Stream &serial);
 	/**

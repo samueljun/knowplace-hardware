@@ -38,8 +38,9 @@
 
 // Teensy - one serial port, but "Serail" is USB virtual serial 
 #elif defined(CORE_TEENSY)
-  #define DEFAULT_SERIAL Uart
+  #define DEFAULT_SERIAL ss
   static HardwareSerial Uart = HardwareSerial();
+static SoftwareSerial ss = SoftwareSerial(14, 13);
 
 // Sanguino - choice of 2 serial ports
 #elif defined(__AVR_ATmega644__) || defined(__AVR_ATmega644P__)
@@ -695,6 +696,16 @@ XBee::XBee(): _response(XBeeResponse()), xbeeSerial(DEFAULT_SERIAL) {
 	_checksumTotal = 0;
 	_nextFrameId = 0;
 
+	_response.init();
+	_response.setFrameData(_responseFrameData);
+}
+
+XBee::XBee(Stream &serial): _response(XBeeResponse()), xbeeSerial(serial) {
+	_pos = 0;
+	_escape = false;
+	_checksumTotal = 0;
+	_nextFrameId = 0;
+    
 	_response.init();
 	_response.setFrameData(_responseFrameData);
 }
