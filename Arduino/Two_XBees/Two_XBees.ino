@@ -108,7 +108,7 @@ else
 while(digitalRead(resetPin) == HIGH);
 nss.println("Button Released");
 while(digitalRead(resetPin) == LOW);
-delay(2000);
+delay(5000);
 sendXbeeCommands(xbeess);
 }
 //ss.println("testUart");

@@ -38,9 +38,8 @@
 
 // Teensy - one serial port, but "Serail" is USB virtual serial 
 #elif defined(CORE_TEENSY)
-  #define DEFAULT_SERIAL ss
+  #define DEFAULT_SERIAL Uart
   static HardwareSerial Uart = HardwareSerial();
-static SoftwareSerial ss = SoftwareSerial(14, 13);
 
 // Sanguino - choice of 2 serial ports
 #elif defined(__AVR_ATmega644__) || defined(__AVR_ATmega644P__)

@@ -33,7 +33,9 @@ void XBeeIOData::clear()
 }
 KnowPlaceHub::KnowPlaceHub()
 		      :hubSerial(Serial)
+#ifdef USING_LCD
             ,lcd(LCD_RS, LCD_RW, LCD_Enable, LCD_D4, LCD_D5, LCD_D6, LCD_D7)
+#endif //USING_LCD
             ,xbee(XBee())
             ,ssXbee(SoftwareSerial(XBEE_ADD_RX, XBEE_ADD_TX))
             ,xbeeSS(XBee(ssXbee))
@@ -64,7 +66,7 @@ KnowPlaceHub::KnowPlaceHub()
     /////     Microcontroller     /////
     ///////////////////////////////////
     internalLed = INTERNAL_LED;
-    
+    hubApiKey = HUB_API_KEY;
     ////////////////////////
     //////     LCD     /////
     ////////////////////////
@@ -128,7 +130,9 @@ void KnowPlaceHub::init()
 #endif
     
     //Display
+#ifdef USING_LCD
     lcd.begin(LCD_ROWS, LCD_COLS);
+#endif //USING_LCD
     
     //XBee
     ssXbee.begin(XBEE_BAUD); //don't need to begin the xbeeSS because of 
@@ -151,7 +155,7 @@ void KnowPlaceHub::init()
 ////////////////////////
 //////     LCD     /////
 ////////////////////////
-
+#ifdef USING_LCD
 //prints leading zeros of four digit analog values
 //should only be used for 4 digits (assumed max of 1023)
 //could be made more general
@@ -171,7 +175,7 @@ void KnowPlaceHub::lcdPrintAnalog(int analog)
     }
     else lcd.print(">MAX");
 }
-
+#endif //USING_LCD
 ////////////////////////
 /////     XBee     /////
 ////////////////////////
@@ -315,6 +319,28 @@ boolean KnowPlaceHub::xbeeSetNodePanID(uint8_t *idVal, uint8_t valSize)
     return ret;
 }
 */
+void KnowPlaceHub::storeXBeeAddress64(uint8_t addrH[4], uint8_t addrL[4])
+{
+    uint32_t halfAddr = addrH[0];
+    for (int i = 1; i < 4; i++) {
+        halfAddr =  (halfAddr<<8) | addrH[i];
+    }
+    xba64.setMsb(halfAddr);
+//    hubSerial.print("Stored addr64Msb:");
+//    hubSerial.print(xba64.getMsb()>>16 & 0xFFFF,HEX);
+//    hubSerial.print(xba64.getMsb() & 0xFFFF,HEX);
+//    hubSerial.println();
+    
+    halfAddr = addrL[0];
+    for (int i = 1; i < 4; i++) {
+        halfAddr = (halfAddr<<8) | addrL[i];
+    }
+    xba64.setLsb(halfAddr);
+//    hubSerial.print("Stored addr64Lsb:");
+//    hubSerial.print(xba64.getLsb()>>16 & 0xFFFF,HEX);
+//    hubSerial.print(xba64.getLsb() & 0xFFFF,HEX);
+//    hubSerial.println();
+}
 
 void KnowPlaceHub::addNodeToWeb()
 {
@@ -377,9 +403,11 @@ void KnowPlaceHub::addNodeToWeb()
         hubSerial.println("New Node PanID");
         for(int i = 0; i < 8; i++)
         {
-            if(panID[i] == 0)
+            if(panID[i] < 16)
             {
-                hubSerial.print("00");
+                hubSerial.print("0");
+                if(panID[i] == 0)
+                    hubSerial.print("0");
             }
             else
             {
@@ -390,9 +418,11 @@ void KnowPlaceHub::addNodeToWeb()
         hubSerial.println("New Node Address:");
         for(int i = 0; i < 4; i++)
         {
-            if(nodeSH[i] == 0)
+            if(nodeSH[i] < 16)
             {
-                hubSerial.print("00");
+                hubSerial.print("0");
+                if(nodeSH[i] == 0)
+                    hubSerial.print("0");
             }
             else
             {
@@ -402,9 +432,11 @@ void KnowPlaceHub::addNodeToWeb()
         hubSerial.print(" ");
         for(int i = 0; i < 4; i++)
         {
-            if(nodeSL[i] == 0)
+            if(nodeSL[i] < 16)
             {
-                hubSerial.print("00");
+                hubSerial.print("0");
+                if(nodeSL[i] == 0)
+                    hubSerial.print("0");
             }
             else
             {
@@ -412,6 +444,10 @@ void KnowPlaceHub::addNodeToWeb()
             }
         }
         hubSerial.println();
+        
+        //post to KnowPlace
+        storeXBeeAddress64(nodeSH, nodeSL);
+        ethernetPostNewNodeAddress(xba64);
     }
     else
     {
@@ -631,17 +667,27 @@ void KnowPlaceHub::xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioDa
 ////////////////////////////
 /////     Ethernet     /////
 ////////////////////////////
-
-String KnowPlaceHub::ethernetConnectAndRead(/*uint32_t*/int node_address){
+boolean KnowPlaceHub::ethernetConnect()
+{
     //connect to the server
-    
     //Initialize client
     client.stop();
     client.flush();
     Serial.println("connecting...");
-    
     //port 80 is typical of a www page
-    if (client.connect(server, 80)) {
+    return client.connect(server, 80);
+}
+
+void KnowPlaceHub::ethernetDisconnect()
+{
+    client.println("Connection: close");
+    client.println();
+}
+
+String KnowPlaceHub::ethernetRead(/*XBeeAddress64*/int node_address)
+{
+    if (ethernetConnect())
+    {
         hubSerial.println("connected");
         client.print("GET /testlamp?node_address=");
         client.print(String(node_address));
@@ -649,32 +695,23 @@ String KnowPlaceHub::ethernetConnectAndRead(/*uint32_t*/int node_address){
         client.println("Host: limitless-headland-1164.herokuapp.com");
         //    client.println("GET /arduino HTTP/1.1");
         //    client.println("Host: mrlamroger.bol.ucla.edu");
-        client.println("Connection: close");
-        client.println();
-        
+        ethernetDisconnect();
         //Connected - Read the page
         return ethernetReadPage(); //go and read the output
-        
-        
     }else{
         hubSerial.println("connection failed");
     }
     
 }
 
-String KnowPlaceHub::ethernetConnectAndPost(/*uint32_t*/int node_address, /*uint32_t*/int data)
+boolean KnowPlaceHub::ethernetPostSensorData(/*XBeeAddress64*/int node_address, /*uint32_t*/int data)
 {
-    //connect to the server
-    
-    //Initialize client
-    client.stop();
-    client.flush();
-    Serial.println("connecting...");
-    
-    //port 80 is typical of a www page
-    if (client.connect(server, 80)) {
+    boolean ret = false;
+    if (ethernetConnect())
+    {
         hubSerial.println("connected");
-        client.print("POST /testlamp?node_address=");
+        client.print("POST /testlamp");
+        client.print("?node_address=");
         client.print(String(node_address));
         client.print("&data_value=");
         client.print(String(data));
@@ -682,22 +719,65 @@ String KnowPlaceHub::ethernetConnectAndPost(/*uint32_t*/int node_address, /*uint
         client.println("Host: limitless-headland-1164.herokuapp.com");
         //    client.println("GET /arduino HTTP/1.1");
         //    client.println("Host: mrlamroger.bol.ucla.edu");
-        client.println("Connection: close");
-        client.println();
+        ethernetDisconnect();
         
         //Verify data was successfuly posted.
         ethernetScrapeWebsite(node_address);
         if (value[0].toInt() == data)
         {
-            return "Successfully Posted";
+            hubSerial.println("Successfully Posted");
+            ret= true;
         }
-        return "Post Failed"; //go and read the output
-        
+        else{
+            hubSerial.println("Post Failed"); //go and read the output
+        }
         
     }else{
         hubSerial.println("connection failed");
     }
-    
+    return ret;
+}
+
+boolean KnowPlaceHub::ethernetPostNewNodeAddress(XBeeAddress64 & node_address)
+{
+    boolean ret = false;
+    if (ethernetConnect())
+    {
+        hubSerial.println("connected");
+        
+        client.print("POST /testlamp");
+        client.print("hub_api_key=");
+        client.print(String(hubApiKey)); //a member variable of the hub class
+        client.print("?node_address_high=");
+        client.print(node_address.getMsb()>>16 & 0xFFFF, HEX); //print HEX is base 16, not 32
+        client.print(node_address.getMsb() & 0xFFFF,HEX);
+        client.print("?node_address_low=");
+        client.print(node_address.getLsb()>>16 & 0xFFFF,HEX);
+        client.print(node_address.getLsb() & 0xFFFF,HEX);
+        client.println(" HTTP/1.1");
+        client.println("Host: limitless-headland-1164.herokuapp.com");
+
+        ethernetDisconnect();
+        
+        //todo: figure out specific implementation for adding
+        //Verify data was successfuly posted.
+//        ethernetScrapeWebsite(node_address);
+//        if (value[0].toInt() == data)
+//        {
+//            hubSerial.println("Successfully Posted");
+//            ret = true;
+//        }
+//        else
+//        {
+//            hubSerial.println("Post Failed"); //go and read the output
+//        }
+        ret = true;
+    }
+    else
+    {
+        hubSerial.println("connection failed");
+    }
+    return ret;
 }
 
 String KnowPlaceHub::ethernetReadPage(){
@@ -774,9 +854,9 @@ String KnowPlaceHub::ethernetReadPage(){
     }
 }
 
-void KnowPlaceHub::ethernetScrapeWebsite(/*uint32_t*/int node_address)
+void KnowPlaceHub::ethernetScrapeWebsite(/*XBeeAddress64*/int node_address)
 {
-    String pageValue = ethernetConnectAndRead(node_address);
+    String pageValue = ethernetRead(node_address);
     hubSerial.println(pageValue);
     for (int i = 0; i < count; i++)
     {
@@ -788,7 +868,7 @@ void KnowPlaceHub::ethernetScrapeWebsite(/*uint32_t*/int node_address)
 //<<<<<<< HEAD
 //=======
 //>>>>>>> cf98246ed2ae4876dfaecc6ad4a9f6a5418e0afd
-int KnowPlaceHub::getDeviceStatus(/*uint32_t*/int node_address)
+int KnowPlaceHub::getDeviceStatus(/*XBeeAddress64*/int node_address)
 {
     int numDevices = count % 3; //Count is the number of entries.
     //Currently there are three variables per device

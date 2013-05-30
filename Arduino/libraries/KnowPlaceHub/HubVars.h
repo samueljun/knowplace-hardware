@@ -58,6 +58,8 @@ static HardwareSerial Uart = HardwareSerial();
 #define INTERNAL_LED 13
 #endif
 
+#define HUB_API_KEY 31415 //todo: should change to a string
+
 /////////////////////////////////////////
 /////     LCD Character Display     /////
 /////////////////////////////////////////

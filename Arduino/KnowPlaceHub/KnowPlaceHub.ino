@@ -12,11 +12,11 @@
 //xbee
 #include <XBee.h>
 //Display
-#if defined(__Adafruit_Character_OLED__)
-#include <Adafruit_CharacterOLED.h>
-#else
-#include <LiquidCrystal.h>
-#endif
+//#if defined(__Adafruit_Character_OLED__)
+//#include <Adafruit_CharacterOLED.h>
+//#else
+//#include <LiquidCrystal.h>
+//#endif
 //Ethernet
 #include <Dhcp.h>
 #include <Dns.h>
@@ -46,13 +46,17 @@ XBeeAddress64 *xbeeNodeAddress = NULL;
 
 const int analogThresh = 512;
 
+//void addNodeToWeb()
+//{
+//  hub.addNodeToWeb();
+//}
 void setup()
 {
   //starts the serial port, lcd, xbee, and ethernet
   hub.init();
 //  hub.lcd.print("KnowPlace v1.0");
 pinMode(INTERNAL_LED, OUTPUT);
-attachInterrupt(hub.xbeeAddResetPin, hub.addNodeToWeb, FALLING);
+//attachInterrupt(1, addNodeToWeb, FALLING);
 
 //delay(5000);
 
@@ -71,8 +75,8 @@ void loop()
 //delay(10000);
 
 //if the button is pressed, an attempt will be made to add the node
-//hub.xbeeAddNode();
-hub.hubSerial.println("Button not pressed");
+hub.addNodeToWeb();
+//hub.hubSerial.println("Button not pressed");
 delay(1000);
 }
 
@@ -97,9 +101,9 @@ hub.hubSerial.println("attempting IS");
 
 int ioData = -1;
 hub.xbeeForceSampleRequest(xbeeNodeAddress[0], ioData);
-  hub.lcd.setCursor(0,1);
-  hub.lcd.print("I:");
-  hub.lcdPrintAnalog(ioData);
+//  hub.lcd.setCursor(0,1);
+//  hub.lcd.print("I:");
+//  hub.lcdPrintAnalog(ioData);
 #ifdef USING_COSM
   hub.cosmSendData(ioData);
   hub.cosmRequestData();  
@@ -111,9 +115,7 @@ hub.xbeeForceSampleRequest(xbeeNodeAddress[0], ioData);
 #ifdef USING_COSM
  ioData = hub.cosmControlVal;
 #endif //USING_COSM
-  hub.lcd.setCursor(8,1);
-  hub.lcd.print("O:");
-  hub.lcdPrintAnalog(ioData);
+
 hub.hubSerial.println("*");
 hub.hubSerial.println("attempting D0");
 //Requesting pin set on 

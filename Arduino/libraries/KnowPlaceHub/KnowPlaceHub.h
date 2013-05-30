@@ -22,11 +22,15 @@
 #include <XBee.h>
 
 //Display
+//#define USING_LCD
+#ifdef USING_LCD
 #if defined(__Adafruit_Character_OLED__)
 #include "Adafruit_CharacterOLED.h"
 #else
 #include <LiquidCrystal.h>
-#endif
+#endif //__Aadafruit_Character_OLED__
+#endif //USING_LCD
+
 
 //Ethernet
 #include <Dhcp.h>
@@ -91,14 +95,16 @@ public:
 	////////////////////////
     //////     LCD     /////
     ////////////////////////
+#ifdef USING_LCD
 #if defined(__Adafruit_Character_OLED__)
     Adafruit_CharacterOLED lcd;
 #elif defined(__Standard_Character_LCD__)
     LiquidCrystal lcd;
 #endif
+
     
     void lcdPrintAnalog(int analog);
-    
+#endif //USING_LCD
 	////////////////////////
     /////     XBee     /////
     ////////////////////////
@@ -126,13 +132,17 @@ public:
 	EthernetClient client;
     byte mac[6];
     IPAddress ip; //TODO check if this can be private
-    String ethernetConnectAndRead(/*uint32_t*/int node_address);
-    String ethernetConnectAndPost(/*uint32_t*/int node_address, /*uint32_t*/int data);
+    
+    boolean ethernetConnect();
+    void ethernetDisconnect();
+    String ethernetRead(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
+    boolean ethernetPostSensorData(/*uint32_t hubApiKey, XBeeAddress64*/int node_address, /*uint32_t*/int data);
+    boolean ethernetPostNewNodeAddress(XBeeAddress64 &nodeAddress);
     
     String ethernetReadPage();
-    void ethernetScrapeWebsite(/*uint32_t*/int node_address);
+    void ethernetScrapeWebsite(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
     
-    int getDeviceStatus(/*uint32_t*/int node_address);
+    int getDeviceStatus(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
     
     ////////////////////////
     /////     COSM     /////
@@ -145,11 +155,13 @@ public:
     void cosmRequestData();
 #endif //USING_COSM
     
+    
+    
 private:
     ////////////////////////////////////
     //////     Microcontroller     /////
     ////////////////////////////////////
-    
+    uint32_t hubApiKey;
     
     ////////////////////////
     //////     LCD     /////
@@ -162,7 +174,7 @@ private:
 	XBee xbee;
     XBee xbeeSS; //software Serial for adding a node
     SoftwareSerial ssXbee;
-    
+
     
     AtCommandRequest atRequest;
     AtCommandResponse atResponse;
@@ -172,6 +184,7 @@ private:
 	RemoteAtCommandResponse remoteAtResponse;
     ZBRxIoSampleResponse ioSample;
 
+    void storeXBeeAddress64(uint8_t addrH[4], uint8_t addrL[4]);
     void xbeeSetAtCommand(uint8_t *cmd_set);
     void xbeeSetAtCommand(uint8_t *cmd_set, uint8_t *value_set, uint8_t valueLength_set);
     void xbeeSetRemoteAtCommand(uint8_t *cmd_set);
