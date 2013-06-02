@@ -31,6 +31,40 @@ void XBeeIOData::clear()
     //just for readability 
     init();
 }
+
+
+XBeeNodeMessage::XBeeNodeMessage() : m_xba64(XBeeAddress64(0,0))
+{
+    m_changed = 0;
+    for (int i = 0; i < 16; i++) {
+        m_type[i] = DATA_INT;
+        m_data[i] = 0;
+    }
+}
+
+void XBeeNodeMessage::setAddressH(uint32_t xbeeAddressH)
+{
+    m_xba64.setMsb(xbeeAddressH);
+}
+
+void XBeeNodeMessage::setAddressL(uint32_t xbeeAddressL)
+{
+    m_xba64.setLsb(xbeeAddressL);
+}
+
+void XBeeNodeMessage::setAddress(uint32_t xbeeAddressH, uint32_t xbeeAddressL)
+{
+    m_xba64.setMsb(xbeeAddressH);
+    m_xba64.setLsb(xbeeAddressL);
+}
+
+void XBeeNodeMessage::setData(uint8_t pin, uint8_t type, uint8_t data)
+{
+    m_changed = m_changed | 1<<pin;
+    m_type[pin] = type;
+    m_data[pin] = data;
+}
+
 KnowPlaceHub::KnowPlaceHub()
 		      :hubSerial(Serial)
 #ifdef USING_LCD
@@ -179,6 +213,7 @@ void KnowPlaceHub::lcdPrintAnalog(int analog)
 ////////////////////////
 /////     XBee     /////
 ////////////////////////
+
 
 void KnowPlaceHub::xbeeSetAtCommand(uint8_t *cmd)
 {
@@ -684,6 +719,16 @@ void KnowPlaceHub::ethernetDisconnect()
     client.println();
 }
 
+void KnowPlaceHub::ethernetClientPrintAddress64(XBeeAddress64 node_address)
+{
+    client.print("?node_address_high=");
+    client.print(node_address.getMsb()>>16 & 0xFFFF, HEX); //print HEX is base 16, not 32
+    client.print(node_address.getMsb() & 0xFFFF,HEX);
+    client.print("?node_address_low=");
+    client.print(node_address.getLsb()>>16 & 0xFFFF,HEX);
+    client.print(node_address.getLsb() & 0xFFFF,HEX);
+}
+
 String KnowPlaceHub::ethernetRead(/*XBeeAddress64*/int node_address)
 {
     if (ethernetConnect())
@@ -748,12 +793,7 @@ boolean KnowPlaceHub::ethernetPostNewNodeAddress(XBeeAddress64 & node_address)
         client.print("POST /testlamp");
         client.print("hub_api_key=");
         client.print(String(hubApiKey)); //a member variable of the hub class
-        client.print("?node_address_high=");
-        client.print(node_address.getMsb()>>16 & 0xFFFF, HEX); //print HEX is base 16, not 32
-        client.print(node_address.getMsb() & 0xFFFF,HEX);
-        client.print("?node_address_low=");
-        client.print(node_address.getLsb()>>16 & 0xFFFF,HEX);
-        client.print(node_address.getLsb() & 0xFFFF,HEX);
+        ethernetClientPrintAddress64(node_address);
         client.println(" HTTP/1.1");
         client.println("Host: limitless-headland-1164.herokuapp.com");
 
@@ -852,6 +892,92 @@ String KnowPlaceHub::ethernetReadPage(){
             delay(5000);
         }
     }
+}
+
+boolean KnowPlaceHub::ethernetReadPageJson(){
+    //read the page, and capture & return everything between '[' and ']'
+    
+    char jsonString[64];
+    char* jsonParam;
+    token_list_t *tokenList = NULL;
+    
+    boolean startRead = false;
+    uint8_t stringPos = 0;
+    
+    uint32_t addressH = 0;
+    uint32_t addressL = 0;
+    uint8_t tempPin = 0;
+    int tempType = -1;
+    uint8_t tempData = 0;
+
+    
+    while(true){
+        if (client.available()) {
+            hubSerial.println("Client is available");
+            while (char c = client.read()) {
+                if(startRead)
+                {
+                    if(c != '}')
+                    {
+                        jsonString[stringPos++] = c;
+                        break;
+                    }
+                    else
+                    {
+                        //Serial.print(c);
+                        jsonString[stringPos++] = c;
+                        jsonString[stringPos++] = '\0';
+                    }
+                }
+                else if (c == '{' )
+                { //'{' is our begining character
+                    startRead = true; //Ready to start reading the part
+                    memset( jsonString, 0, 32 );
+                    stringPos = 0;
+                    jsonString[stringPos++] = c;
+                }
+                else if (c == '>') {
+                    client.stop();
+                    client.flush();
+                    hubSerial.println(inString);
+                    hubSerial.println("disconnecting.");
+                    return false;
+                }
+                else
+                {
+                    continue; //do nothing
+                }
+            }
+        } else {
+            hubSerial.println("Client is not available");
+            delay(5000);
+        }
+    }
+    
+    //process the json object
+    tokenList = create_token_list(10);//I don't know what this number is yet
+    json_to_token_list(jsonString, tokenList);
+    
+    jsonParam = json_get_value(tokenList,"nodeAddressH");
+    nodeMessage.setAddressH(strtoul(jsonParam, NULL, 0)); //store the address
+    
+    jsonParam = json_get_value(tokenList,"nodeAddressL");
+    nodeMessage.setAddressL(strtoul(jsonParam, NULL, 0)); //store the address
+    
+    jsonParam = json_get_value(tokenList,"pinNumber");
+    tempPin = atoi(jsonParam);
+    
+    if (jsonParam == "binary") {
+        tempType = DATA_BINARY;
+    }
+    else if (jsonParam == "integer") {
+        tempType = DATA_INT;
+    }
+    jsonParam = json_get_value(tokenList,"dataValue");
+    tempData = atoi(jsonParam);
+
+    nodeMessage.setData(tempPin, tempType, tempData); //store the data
+    
 }
 
 void KnowPlaceHub::ethernetScrapeWebsite(/*XBeeAddress64*/int node_address)

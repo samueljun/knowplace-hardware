@@ -120,6 +120,11 @@ static SoftwareSerial xbeeSoftwareSerial = SoftwareSerial(XBEE_ADD_RX, XBEE_ADD_
 
 #define KNOWPLACE_SERVER "limitless-headland-1164.herokuapp.com"
 
+#define DATA_STRING 0
+#define DATA_BUFFER 1
+#define DATA_INT 2
+#define DATA_FLOAT 3
+#define DATA_BINARY 4
 ////////////////////////
 /////     COSM     /////
 ////////////////////////

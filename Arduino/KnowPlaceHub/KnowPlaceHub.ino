@@ -9,6 +9,8 @@
 #ifndef CORE_TEENSY
 #include <SoftwareSerial.h>
 #endif
+//#include "aJSON.h"
+#include "JsonArduino.h"
 //xbee
 #include <XBee.h>
 //Display
@@ -46,17 +48,13 @@ XBeeAddress64 *xbeeNodeAddress = NULL;
 
 const int analogThresh = 512;
 
-//void addNodeToWeb()
-//{
-//  hub.addNodeToWeb();
-//}
 void setup()
 {
   //starts the serial port, lcd, xbee, and ethernet
   hub.init();
 //  hub.lcd.print("KnowPlace v1.0");
 pinMode(INTERNAL_LED, OUTPUT);
-//attachInterrupt(1, addNodeToWeb, FALLING);
+
 
 //delay(5000);
 

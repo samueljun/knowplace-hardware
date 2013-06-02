@@ -16,7 +16,9 @@
 //timer interrupts
 #include <TimerOne.h>
 #include <SoftwareSerial.h>
-
+#include <string.h>
+//#include "aJSON.h"
+#include "JsonArduino.h"
 
 //XBee
 #include <XBee.h>
@@ -68,7 +70,20 @@
 #endif //USING_COSM
 
 
-
+class XBeeNodeMessage {
+public:
+    XBeeNodeMessage();
+    void setAddressH(uint32_t xbeeAddressH);
+    void setAddressL(uint32_t xbeeAddressL);
+    void setAddress(uint32_t xbeeAddressH, uint32_t xbeeAddressL);
+    void setData(uint8_t pin, uint8_t type, uint8_t data);
+private:
+    XBeeAddress64 m_xba64;
+    uint8_t m_changed; //bitmap so only changed pin requests get sent to xbee
+    uint8_t m_type[16];
+    uint8_t m_data[16];
+    
+};
 
 class XBeeIOData {
 public:
@@ -140,6 +155,8 @@ public:
     boolean ethernetPostNewNodeAddress(XBeeAddress64 &nodeAddress);
     
     String ethernetReadPage();
+    boolean ethernetReadPageJson();
+    
     void ethernetScrapeWebsite(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
     
     int getDeviceStatus(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
@@ -162,7 +179,8 @@ private:
     //////     Microcontroller     /////
     ////////////////////////////////////
     uint32_t hubApiKey;
-    
+//    aJsonObject* jsonObject;
+
     ////////////////////////
     //////     LCD     /////
     ////////////////////////
@@ -180,6 +198,7 @@ private:
     AtCommandResponse atResponse;
     
     XBeeAddress64 xba64;
+    XBeeNodeMessage nodeMessage;
     RemoteAtCommandRequest remoteAtRequest;
 	RemoteAtCommandResponse remoteAtResponse;
     ZBRxIoSampleResponse ioSample;
@@ -187,6 +206,7 @@ private:
     void storeXBeeAddress64(uint8_t addrH[4], uint8_t addrL[4]);
     void xbeeSetAtCommand(uint8_t *cmd_set);
     void xbeeSetAtCommand(uint8_t *cmd_set, uint8_t *value_set, uint8_t valueLength_set);
+    
     void xbeeSetRemoteAtCommand(uint8_t *cmd_set);
     void xbeeSetRemoteAtCommand(uint8_t *cmd_set, uint8_t *value_set, uint8_t valueLength_set);
 
@@ -207,7 +227,7 @@ private:
     int count;
     
 //    int getDeviceStatus(int id); //MOVED TO PUBLIC SECTION
-    
+    void ethernetClientPrintAddress64(XBeeAddress64 node_address);
     ////////////////////////
     /////     COSM     /////
     ////////////////////////
