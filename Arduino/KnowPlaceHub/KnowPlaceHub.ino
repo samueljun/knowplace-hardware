@@ -37,17 +37,17 @@
 
 
 KnowPlaceHub hub;
-XBeeAddress64 *xbeeNodeAddress = NULL;
-//XBeeAddress64 xbeeNodeAddress[] = {
-//                                  XBeeAddress64(0x0013a200, 0x40315565) //#2
-//                                 ,XBeeAddress64(0x0013a200, 0x40315568) //#4
-//                                 ,XBeeAddress64(0x00131200, 0x40321AB1) //#0
-//                                  };
+//XBeeAddress64 *xbeeNodeAddress = NULL;
+XBeeAddress64 xbeeNodeAddress[] = {
+                                  XBeeAddress64(0x0013a200, 0x40315565) //#2
+                                 ,XBeeAddress64(0x0013a200, 0x40315568) //#4
+                                 ,XBeeAddress64(0x00131200, 0x40321AB1) //#0
+                                  };
 
 
 
 const int analogThresh = 512;
-
+int potPin = A7;
 void setup()
 {
   //starts the serial port, lcd, xbee, and ethernet
@@ -56,8 +56,9 @@ void setup()
 pinMode(INTERNAL_LED, OUTPUT);
 
 
-//delay(5000);
+delay(5000);
 
+pinMode(potPin, INPUT);
 //initialize the pin0 of the sensor node to analog input
 //int pinVal = 0x2;
 //hub.xbeeControlRemotePins(xbeeNodeAddress[0], pinVal);
@@ -73,9 +74,19 @@ void loop()
 //delay(10000);
 
 //if the button is pressed, an attempt will be made to add the node
-hub.addNodeToWeb();
+//hub.addNodeToWeb();
 //hub.hubSerial.println("Button not pressed");
-delay(1000);
+hub.hubSerial.print(analogRead(potPin));
+hub.hubSerial.print(" send request: ");
+if(hub.xbeePwmTxRequest(xbeeNodeAddress[1], analogRead(potPin)))
+{
+  hub.hubSerial.println("sent");
+}
+else 
+{
+  hub.hubSerial.println("failed");
+}
+delay(250);
 }
 
 void controlFromWeb(int node_address)

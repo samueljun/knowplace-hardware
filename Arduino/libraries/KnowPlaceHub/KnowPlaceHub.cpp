@@ -77,6 +77,8 @@ KnowPlaceHub::KnowPlaceHub()
             ,atResponse(AtCommandResponse())
             ,remoteAtRequest(RemoteAtCommandRequest(xba64, NULL, NULL, sizeof(NULL)))
             ,remoteAtResponse(RemoteAtCommandResponse())
+//            ,zbTx(xba64, NULL, sizeof(NULL))
+//            ,txStatus(ZBTxStatusResponse())
             ,ioSample(ZBRxIoSampleResponse())
 			,ip(IP0, IP1, IP2, IP3)
 #ifdef USING_COSM
@@ -699,6 +701,51 @@ void KnowPlaceHub::xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioDa
 }
 
 
+boolean KnowPlaceHub::xbeePwmTxRequest(XBeeAddress64 &remoteAddress, uint16_t pwmVal)
+{
+    uint8_t payload[] = {0,0};
+    
+    ZBTxRequest zbTx = ZBTxRequest(remoteAddress, payload, sizeof(payload));
+    ZBTxStatusResponse txStatus = ZBTxStatusResponse();
+    
+    payload[0] = pwmVal >> 8 & 0xff;
+    payload[1] = pwmVal & 0xff;
+    
+    xbee.send(zbTx);
+    
+    // flash TX indicator
+//    flashLed(internalLed, 1, 100);
+    
+    // after sending a tx request, we expect a status response
+    // wait up to half second for the status response
+    if (xbee.readPacket(500)) {
+        // got a response!
+        
+        // should be a znet tx status
+    	if (xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
+            xbee.getResponse().getZBTxStatusResponse(txStatus);
+    		
+            // get the delivery status, the fifth byte
+            if (txStatus.getDeliveryStatus() == SUCCESS) {
+            	// success.  time to celebrate
+//             	flashLed(internalLed, 5, 50);
+                return true;
+            }
+//            else
+//            {
+//            	// the remote XBee did not receive our packet. is it powered on?
+//             	flashLed(internalLed, 3, 500);
+//            }
+        }
+    }
+//    else
+//    {
+//        // local XBee did not provide a timely TX Status Response -- should not happen
+//        flashLed(internalLed, 2, 50);
+//    }
+    return false;
+    
+}
 ////////////////////////////
 /////     Ethernet     /////
 ////////////////////////////

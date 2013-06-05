@@ -136,6 +136,7 @@ public:
 //    void xbeeReceiveIOData(int &ioData);
     void xbeeForceSampleRequest(XBeeAddress64 &remoteAddress, int &ioData);
     void xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData);
+    boolean xbeePwmTxRequest(XBeeAddress64 &remoteAddress, uint16_t pwmVal);
     
     void addNodeToWeb();
     
@@ -201,6 +202,11 @@ private:
     XBeeNodeMessage nodeMessage;
     RemoteAtCommandRequest remoteAtRequest;
 	RemoteAtCommandResponse remoteAtResponse;
+    
+//    uint16_t payload[2];
+//    
+//    ZBTxRequest zbTx;
+//    ZBTxStatusResponse txStatus;
     ZBRxIoSampleResponse ioSample;
 
     void storeXBeeAddress64(uint8_t addrH[4], uint8_t addrL[4]);
