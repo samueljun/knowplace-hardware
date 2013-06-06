@@ -170,6 +170,8 @@ public:
     
     boolean ethernetReadPage();
     boolean ethernetReadPageJson(XBeeNodeMessage &dataPacket);
+
+    void ethernetPostDataJson(XBeeNodeMessage &dataPacket);
     
     void ethernetScrapeWebsite();
     
