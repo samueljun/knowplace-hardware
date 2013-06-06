@@ -32,6 +32,15 @@ void XBeeIOData::clear()
     init();
 }
 
+void XBeeNodeMessage::resetChangedPin(uint8_t pin)
+{
+    m_changed = (m_changed & ~(0x1<<pin));
+}
+
+void XBeeNodeMessage::resetChangedBitmap()
+{
+    m_changed = 0;
+}
 
 XBeeNodeMessage::XBeeNodeMessage() : m_xba64(XBeeAddress64(0,0))
 {
@@ -63,6 +72,55 @@ void XBeeNodeMessage::setData(uint8_t pin, uint8_t type, uint8_t data)
     m_changed = m_changed | 1<<pin;
     m_type[pin] = type;
     m_data[pin] = data;
+}
+
+boolean XBeeNodeMessage::checkChanged(uint8_t pin)
+{
+    return (m_changed & (0x1 << pin));
+}
+
+uint16_t XBeeNodeMessage::getChangedBitmap()
+{
+    return m_changed;
+}
+
+uint32_t XBeeNodeMessage::getAddressH()
+{
+    return m_xba64.getMsb();
+}
+
+uint32_t XBeeNodeMessage::getAddressL()
+{
+    return m_xba64.getLsb();
+}
+
+XBeeAddress64 XBeeNodeMessage::getAddress()
+{
+    return m_xba64;
+}
+
+int XBeeNodeMessage::getData(uint8_t pin)
+{
+    if(pin < 0 || pin >= 16)
+    {
+        return -1;
+    }
+    else
+    {
+        return m_data[pin];
+    }
+}
+
+int XBeeNodeMessage::getDataType(uint8_t pin)
+{
+    if(pin < 0 || pin >= 16)
+    {
+        return -1;
+    }
+    else
+    {
+        return m_type[pin];
+    }
 }
 
 KnowPlaceHub::KnowPlaceHub()
@@ -776,8 +834,15 @@ void KnowPlaceHub::ethernetClientPrintAddress64(XBeeAddress64 node_address)
     client.print(node_address.getLsb() & 0xFFFF,HEX);
 }
 
-String KnowPlaceHub::ethernetRead(/*XBeeAddress64*/int node_address)
+boolean KnowPlaceHub::ethernetGetRequest()
 {
+#ifdef USING_PROCESSING_AS_INTERNET
+    hubSerial.println("<");
+    hubSerial.print("GET /mydata?action=");
+    hubSerial.print(">");
+    //Connected - Read the page
+    return ethernetReadPage();
+#else
     if (ethernetConnect())
     {
         hubSerial.println("connected");
@@ -793,12 +858,23 @@ String KnowPlaceHub::ethernetRead(/*XBeeAddress64*/int node_address)
     }else{
         hubSerial.println("connection failed");
     }
-    
+#endif
 }
 
 boolean KnowPlaceHub::ethernetPostSensorData(/*XBeeAddress64*/int node_address, /*uint32_t*/int data)
 {
     boolean ret = false;
+#ifdef USING_PROCESSING_AS_INTERNET
+    //connect with starting character '<'
+    hubSerial.println("<");
+    hubSerial.print("POST /testlamp");
+    hubSerial.print("?node_address=");
+    hubSerial.print(String(node_address));
+    hubSerial.print("&data_value=");
+    hubSerial.print(String(data));
+    //disconnect with ending character '>'
+    hubSerial.print(">");
+#else
     if (ethernetConnect())
     {
         hubSerial.println("connected");
@@ -827,6 +903,7 @@ boolean KnowPlaceHub::ethernetPostSensorData(/*XBeeAddress64*/int node_address, 
     }else{
         hubSerial.println("connection failed");
     }
+#endif //USING_PROCESSING_AS_INTERNET
     return ret;
 }
 
@@ -867,7 +944,7 @@ boolean KnowPlaceHub::ethernetPostNewNodeAddress(XBeeAddress64 & node_address)
     return ret;
 }
 
-String KnowPlaceHub::ethernetReadPage(){
+boolean KnowPlaceHub::ethernetReadPage(){
     //read the page, and capture & return everything between '[' and ']'
     
     stringPos = 0;
@@ -884,7 +961,7 @@ String KnowPlaceHub::ethernetReadPage(){
                     client.flush();
                     hubSerial.println(inString);
                     hubSerial.println("disconnecting.");
-                    return "End";
+                    return false;
                 } else
                     
                     if (c == '[' ) { //'[' is our begining character
@@ -941,7 +1018,7 @@ String KnowPlaceHub::ethernetReadPage(){
     }
 }
 
-boolean KnowPlaceHub::ethernetReadPageJson(){
+boolean KnowPlaceHub::ethernetReadPageJson(XBeeNodeMessage &dataPacket){
     //read the page, and capture & return everything between '[' and ']'
     
     char jsonString[64];
@@ -951,13 +1028,49 @@ boolean KnowPlaceHub::ethernetReadPageJson(){
     boolean startRead = false;
     uint8_t stringPos = 0;
     
-    uint32_t addressH = 0;
-    uint32_t addressL = 0;
+//    uint32_t addressH = 0;
+//    uint32_t addressL = 0;
     uint8_t tempPin = 0;
     int tempType = -1;
     uint8_t tempData = 0;
 
-    
+#ifdef USING_PROCESSING_AS_INTERNET
+    while(!hubSerial.available()){}
+    hubSerial.println("Client is available");
+    while (char c = hubSerial.read()) {
+        if(startRead)
+        {
+            if(c != '}')
+            {
+                jsonString[stringPos++] = c;
+                break;
+            }
+            else
+            {
+                //Serial.print(c);
+                jsonString[stringPos++] = c;
+                jsonString[stringPos++] = '\0';
+            }
+        }
+        else if (c == '{' )
+        { //'{' is our begining character
+            startRead = true; //Ready to start reading the part
+            memset( jsonString, 0, 32 );
+            stringPos = 0;
+            jsonString[stringPos++] = c;
+        }
+        else if (c == '>') {
+            return false;
+        }
+        else
+        {
+            continue; //do nothing
+        }
+    }
+
+
+
+#else
     while(true){
         if (client.available()) {
             hubSerial.println("Client is available");
@@ -1000,16 +1113,17 @@ boolean KnowPlaceHub::ethernetReadPageJson(){
             delay(5000);
         }
     }
+#endif //USING_PROCESSING_AS_INTERNET
     
     //process the json object
     tokenList = create_token_list(10);//I don't know what this number is yet
     json_to_token_list(jsonString, tokenList);
     
     jsonParam = json_get_value(tokenList,"nodeAddressH");
-    nodeMessage.setAddressH(strtoul(jsonParam, NULL, 0)); //store the address
+    dataPacket.setAddressH(strtoul(jsonParam, NULL, 0)); //store the address
     
     jsonParam = json_get_value(tokenList,"nodeAddressL");
-    nodeMessage.setAddressL(strtoul(jsonParam, NULL, 0)); //store the address
+    dataPacket.setAddressL(strtoul(jsonParam, NULL, 0)); //store the address
     
     jsonParam = json_get_value(tokenList,"pinNumber");
     tempPin = atoi(jsonParam);
@@ -1023,18 +1137,22 @@ boolean KnowPlaceHub::ethernetReadPageJson(){
     jsonParam = json_get_value(tokenList,"dataValue");
     tempData = atoi(jsonParam);
 
-    nodeMessage.setData(tempPin, tempType, tempData); //store the data
+    dataPacket.setData(tempPin, tempType, tempData); //store the data
     
 }
 
-void KnowPlaceHub::ethernetScrapeWebsite(/*XBeeAddress64*/int node_address)
+void KnowPlaceHub::ethernetScrapeWebsite()
 {
-    String pageValue = ethernetRead(node_address);
-    hubSerial.println(pageValue);
-    for (int i = 0; i < count; i++)
+    if(ethernetGetRequest())
     {
-        hubSerial.println(variable[i]);
-        hubSerial.println(value[i]);
+        while (ethernetReadPageJson(nodeMessage))
+        {
+            //send out xbee command
+        }
+    }
+    else
+    {
+        //thing of something
     }
 }
 

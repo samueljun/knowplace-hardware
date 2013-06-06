@@ -45,6 +45,8 @@
 #include <HttpClient.h>
 #include <SPI.h>
 
+#define USING_PROCESSING_AS_INTERNET
+
 //Cosm
 //#define USING_COSM
 #ifdef USING_COSM
@@ -73,13 +75,24 @@
 class XBeeNodeMessage {
 public:
     XBeeNodeMessage();
+    void resetChangedPin(uint8_t pin);
+    void resetChangedBitmap();
     void setAddressH(uint32_t xbeeAddressH);
     void setAddressL(uint32_t xbeeAddressL);
     void setAddress(uint32_t xbeeAddressH, uint32_t xbeeAddressL);
     void setData(uint8_t pin, uint8_t type, uint8_t data);
+    
+    boolean checkChanged(uint8_t pin);
+    uint16_t getChangedBitmap();
+    uint32_t getAddressH();
+    uint32_t getAddressL();
+    XBeeAddress64 getAddress();
+    int getData(uint8_t pin);
+    int getDataType(uint8_t pin);
+    
 private:
     XBeeAddress64 m_xba64;
-    uint8_t m_changed; //bitmap so only changed pin requests get sent to xbee
+    uint16_t m_changed; //bitmap so only changed pin requests get sent to xbee
     uint8_t m_type[16];
     uint8_t m_data[16];
     
@@ -151,14 +164,14 @@ public:
     
     boolean ethernetConnect();
     void ethernetDisconnect();
-    String ethernetRead(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
+    boolean ethernetGetRequest();
     boolean ethernetPostSensorData(/*uint32_t hubApiKey, XBeeAddress64*/int node_address, /*uint32_t*/int data);
     boolean ethernetPostNewNodeAddress(XBeeAddress64 &nodeAddress);
     
-    String ethernetReadPage();
-    boolean ethernetReadPageJson();
+    boolean ethernetReadPage();
+    boolean ethernetReadPageJson(XBeeNodeMessage &dataPacket);
     
-    void ethernetScrapeWebsite(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
+    void ethernetScrapeWebsite();
     
     int getDeviceStatus(/*uint32_t hubApiKey, XBeeAddress64*/int node_address);
     
