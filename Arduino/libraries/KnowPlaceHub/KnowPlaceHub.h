@@ -24,7 +24,7 @@
 #include <XBee.h>
 
 //Display
-//#define USING_LCD
+#define USING_LCD
 #ifdef USING_LCD
 #if defined(__Adafruit_Character_OLED__)
 #include "Adafruit_CharacterOLED.h"
@@ -147,9 +147,9 @@ public:
     void xbeeReceiveRemoteAtResponse();
     void xbeeReceiveRemoteAtResponse(int &ioData);
 //    void xbeeReceiveIOData(int &ioData);
-    void xbeeForceSampleRequest(XBeeAddress64 &remoteAddress, int &ioData);
-    void xbeeControlRemotePins(XBeeAddress64 &remoteAddress, int &ioData);
-    boolean xbeePwmTxRequest(XBeeAddress64 &remoteAddress, uint16_t pwmVal);
+    void xbeeForceSampleRequest(XBeeAddress64 remoteAddress, int ioData);
+    void xbeeControlRemotePins(XBeeAddress64 remoteAddress, int ioData);
+    boolean xbeePwmTxRequest(XBeeAddress64 remoteAddress, uint16_t pwmVal);
     
     void addNodeToWeb();
     
@@ -170,6 +170,8 @@ public:
     
     boolean ethernetReadPage();
     boolean ethernetReadPageJson(XBeeNodeMessage &dataPacket);
+    
+    boolean ethernetPostDataJson(XBeeNodeMessage &dataPacket);
     
     void ethernetScrapeWebsite();
     
