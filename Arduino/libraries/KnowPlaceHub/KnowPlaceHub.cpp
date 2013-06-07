@@ -1303,35 +1303,55 @@ boolean KnowPlaceHub::ethernetReadPageJson(XBeeNodeMessage &dataPacket){
 
 void KnowPlaceHub::ethernetScrapeWebsite()
 {
-    lcd.clear();
-    lcd.home();
-    lcd.print("1");
     if(ethernetGetRequest())
     {
         
-        lcd.print("2");
+
         //node message is defined in the header
         while (ethernetReadPageJson(nodeMessage))
         {
-            lcd.print("3");
-            lcd.print(" ");
-            hubSerial.println("worked");
             hubSerial.println(nodeMessage.getAddressH());
             hubSerial.println(nodeMessage.getAddressL());
             hubSerial.println(nodeMessage.getDataType(0));
             hubSerial.println(nodeMessage.getData(0));
-
-//            lcd.print(nodeMessage.getDataType(0));
-            if(nodeMessage.getDataType(0) == DATA_BINARY)
+            if(nodeMessage.getAddressH() == 238080)
             {
-                lcd.home();
+                //skip
+            }
+            else if(nodeMessage.getAddressL() == 1076974952)
+            {
+                lcd.setCursor(0,0);
+                lcd.print("Fan  ");
                 lcdPrintAnalog(nodeMessage.getData(0));
+            }
+            else if (nodeMessage.getAddressL() == 1076974949)
+            {
+                lcd.setCursor(0,1);
+                lcd.print("Lamp ");
+                if(nodeMessage.getData(0) == 4)
+                {
+                    lcd.print("OFF");
+                }
+                else if (nodeMessage.getData(0) == 5)
+                {
+                    lcd.print("ON ");
+                }
+                else
+                {
+                    lcdPrintAnalog(nodeMessage.getData(0));
+                }
+            }
+//            lcd.print(nodeMessage.getDataType(0));
+            if(nodeMessage.getAddressH() == 238080)
+            {
+                //skip
+            }
+            else if(nodeMessage.getDataType(0) == DATA_BINARY)
+            {
                 xbeeControlRemotePins(nodeMessage.getAddress(), nodeMessage.getData(0));
             }
             else if (nodeMessage.getDataType(0) == DATA_INT)
             {
-                lcd.home();
-                lcdPrintAnalog(nodeMessage.getData(0));
                 xbeePwmTxRequest(nodeMessage.getAddress(), nodeMessage.getData(0));
             }
             else
@@ -1342,8 +1362,6 @@ void KnowPlaceHub::ethernetScrapeWebsite()
     }
     else
     {
-        lcd.home();
-        lcd.print("nope");
         hubSerial.println("ethernetGetRequest didn't work"); //think of something
     }
 }

@@ -14,11 +14,11 @@
 //xbee
 #include <XBee.h>
 //Display
-//#if defined(__Adafruit_Character_OLED__)
-//#include <Adafruit_CharacterOLED.h>
-//#else
-//#include <LiquidCrystal.h>
-//#endif
+#if defined(__Adafruit_Character_OLED__)
+#include <Adafruit_CharacterOLED.h>
+#else
+#include <LiquidCrystal.h>
+#endif
 //Ethernet
 #include <Dhcp.h>
 #include <Dns.h>
@@ -37,12 +37,12 @@
 
 
 KnowPlaceHub hub;
-//XBeeAddress64 *xbeeNodeAddress = NULL;
-XBeeAddress64 xbeeNodeAddress[] = {
-                                  XBeeAddress64(0x0013a200, 0x40315565) //#2
-                                 ,XBeeAddress64(0x0013a200, 0x40315568) //#4
-                                 ,XBeeAddress64(0x00131200, 0x40321AB1) //#0
-                                  };
+XBeeAddress64 *xbeeNodeAddress = NULL;
+//XBeeAddress64 xbeeNodeAddress[] = {
+//                                  XBeeAddress64(0x0013A200, 0x40315565) //#2
+//                                 ,XBeeAddress64(0x0013A200, 0x40315568) //#4
+//                                 ,XBeeAddress64(0x00131200, 0x40321AB1) //#0
+//                                  };
 
 
 
@@ -70,37 +70,40 @@ void loop()
 //senseAndControl();
 //hub.ethernetScrapeWebsite(1);
 
-//controlFromWeb(1);
+controlFromWeb();
 //delay(10000);
 
 //if the button is pressed, an attempt will be made to add the node
 //hub.addNodeToWeb();
 //hub.hubSerial.println("Button not pressed");
-hub.hubSerial.print(analogRead(potPin));
-hub.hubSerial.print(" send request: ");
-if(hub.xbeePwmTxRequest(xbeeNodeAddress[1], analogRead(potPin)))
-{
-  hub.hubSerial.println("sent");
-}
-else 
-{
-  hub.hubSerial.println("failed");
-}
-delay(250);
+
+
+//hub.hubSerial.print(analogRead(potPin));
+//hub.hubSerial.print(" send request: ");
+//if(hub.xbeePwmTxRequest(xbeeNodeAddress[1], analogRead(potPin)))
+//{
+//  hub.hubSerial.println("sent");
+//}
+//else 
+//{
+//  hub.hubSerial.println("failed");
+//}
+delay(1000);
 }
 
-void controlFromWeb(int node_address)
+void controlFromWeb()
 {
-  hub.ethernetScrapeWebsite(node_address);
+  hub.ethernetScrapeWebsite();
 //  hub.ethernetConnectAndRead(node_address);
-  int pinVal = 0x4 + hub.getDeviceStatus(node_address);
-  hub.hubSerial.print("pinVal will be: ");
-  hub.hubSerial.println(pinVal);
-  if(pinVal == 4 || pinVal == 5)
-  {
-    hub.xbeeControlRemotePins(xbeeNodeAddress[node_address], pinVal );
-  }
+//  int pinVal = 0x4 + hub.getDeviceStatus(node_address);
+//  hub.hubSerial.print("pinVal will be: ");
+//  hub.hubSerial.println(pinVal);
+//  if(pinVal == 4 || pinVal == 5)
+//  {
+//    hub.xbeeControlRemotePins(xbeeNodeAddress[node_address], pinVal );
+//  }
 }
+
 int senseAndControl()
 {
 digitalWrite(INTERNAL_LED, HIGH);
