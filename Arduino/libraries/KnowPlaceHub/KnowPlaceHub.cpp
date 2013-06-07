@@ -1009,62 +1009,6 @@ boolean KnowPlaceHub::ethernetPostNewNodeAddress(XBeeAddress64 & node_address)
     return ret;
 }
 
-void ethernetPostDataJson(XBeeNodeMessage &dataPacket) 
-{
-    boolean ret = false;
-#ifdef USING_PROCESSING_AS_INTERNET
-    //connect with starting character '<'
-    hubSerial.println("<");
-    hubSerial.print("POST /testlamp");
-    hubSerial.print("?nodeAddressH=");
-    hubSerial.print(String(dataPacket.getAddressH()));
-    hubSerial.print("&nodeAddressL=");
-    hubSerial.print(String(dataPacket.getAddressH()));
-    hubSerial.print("&type=");
-    hubSerial.print(String(dataPacket.getDataType(0));
-    hubSerial.print("&data=");
-    hubSerial.print(String(dataPacket.getData(0));
-
-    //disconnect with ending character '>'
-    hubSerial.print(">");
-#else
-    if (ethernetConnect())
-    {
-        hubSerial.println("connected");
-        client.print("POST /testlamp");
-        client.print("?nodeAddressH=");
-        client.print(String(dataPacket.getAddressH()));
-        client.print("&nodeAddressL=");
-        client.print(String(dataPacket.getAddressH()));
-        client.print("&type=");
-        client.print(String(dataPacket.getDataType(0));
-        client.print("&data=");
-        client.print(String(dataPacket.getData(0));
-        client.println(" HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-        //    client.println("GET /arduino HTTP/1.1");
-        //    client.println("Host: mrlamroger.bol.ucla.edu");
-        ethernetDisconnect();
-        
-        //Verify data was successfuly posted.
-        ethernetScrapeWebsite(node_address);
-        if (value[0].toInt() == data)
-        {
-            hubSerial.println("Successfully Posted");
-            ret= true;
-        }
-        else{
-            hubSerial.println("Post Failed"); //go and read the output
-        }
-        
-    }else{
-        hubSerial.println("connection failed");
-    }
-#endif //USING_PROCESSING_AS_INTERNET
-    return ret;
-
-}
-
 boolean KnowPlaceHub::ethernetReadPage(){
     //read the page, and capture & return everything between '[' and ']'
     
