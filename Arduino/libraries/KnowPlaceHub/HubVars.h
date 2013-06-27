@@ -125,6 +125,10 @@ static SoftwareSerial xbeeSoftwareSerial = SoftwareSerial(XBEE_ADD_RX, XBEE_ADD_
 #define DATA_INT 2
 #define DATA_FLOAT 3
 #define DATA_BINARY 4
+
+static const int INTERNET_VIA_PROCESSING = 0;
+static const int INTERNET_VIA_ETHERNET = 1;
+static const int INTERNET_VIA_WIFI = 2;
 ////////////////////////
 /////     COSM     /////
 ////////////////////////
