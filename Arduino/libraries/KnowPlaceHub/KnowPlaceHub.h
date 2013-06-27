@@ -153,6 +153,9 @@ public:
     
     void addNodeToWeb();
     
+    ////////////////////////////
+    /////     Internet     /////
+    ////////////////////////////
     
 	////////////////////////////
     /////     Ethernet     /////
@@ -163,13 +166,12 @@ public:
     IPAddress ip; //TODO check if this can be private
     
     boolean ethernetConnect();
+    void ethernetCloseConnection();
     void ethernetDisconnect();
     boolean ethernetGetRequest();
-    boolean ethernetPostSensorData(/*uint32_t hubApiKey, XBeeAddress64*/int node_address, /*uint32_t*/int data);
     boolean ethernetPostNewNodeAddress(XBeeAddress64 &nodeAddress);
     
-    boolean ethernetReadPage();
-    boolean ethernetReadPageJson(XBeeNodeMessage &dataPacket);
+    boolean ethernetReadPage(XBeeNodeMessage &dataPacket);
     
     boolean ethernetPostDataJson(XBeeNodeMessage &dataPacket);
     
@@ -191,11 +193,12 @@ public:
     
     
 private:
-    ////////////////////////////////////
-    //////     Microcontroller     /////
-    ////////////////////////////////////
+    ////////////////////////////////////////
+    //////     Microcontroller/Hub     /////
+    ////////////////////////////////////////
     uint32_t hubApiKey;
-//    aJsonObject* jsonObject;
+    int internetSource;
+    void internetDisconnect();
 
     ////////////////////////
     //////     LCD     /////
@@ -232,10 +235,13 @@ private:
     void xbeeSetRemoteAtCommand(uint8_t *cmd_set, uint8_t *value_set, uint8_t valueLength_set);
 
     ////////////////////////////
+    /////     Internet     /////
+    ////////////////////////////
+        char internetReadChar();
+    
+    ////////////////////////////
     /////     Ethernet     /////
     ////////////////////////////
-
-    
     //Roger's function
     boolean startRead;
     boolean readingFirst;
@@ -249,6 +255,7 @@ private:
     
 //    int getDeviceStatus(int id); //MOVED TO PUBLIC SECTION
     void ethernetClientPrintAddress64(XBeeAddress64 node_address);
+
     ////////////////////////
     /////     COSM     /////
     ////////////////////////

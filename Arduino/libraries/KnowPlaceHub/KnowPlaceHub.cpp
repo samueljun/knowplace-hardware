@@ -122,6 +122,9 @@ int XBeeNodeMessage::getDataType(uint8_t pin)
         return m_type[pin];
     }
 }
+////////////////////////////////////////
+//////     Microcontroller/Hub     /////
+////////////////////////////////////////
 
 KnowPlaceHub::KnowPlaceHub()
 		      :hubSerial(Serial)
@@ -156,24 +159,21 @@ KnowPlaceHub::KnowPlaceHub()
 
 //			,server(SERVER_NUM)
 {
-    ///////////////////////////////////
+
     /////     Microcontroller     /////
-    ///////////////////////////////////
     internalLed = INTERNAL_LED;
     hubApiKey = HUB_API_KEY;
-    ////////////////////////
+//    internetSource = INTERNET_VIA_ETHERNET;
+    internetSource = INTERNET_VIA_PROCESSING;
+
     //////     LCD     /////
-    ////////////////////////
 
 
-    ////////////////////////
     /////     XBee     /////
-    ////////////////////////
     xbeeAddPin = XBEE_ADD_PIN;
     
-    ////////////////////////////
+
     /////     Ethernet     /////
-    ////////////////////////////
     mac[0] = MAC_0;
     mac[1] = MAC_1;
     mac[2] = MAC_2;
@@ -189,9 +189,8 @@ KnowPlaceHub::KnowPlaceHub()
     location = "/testlamp HTTP/1.0";
     
     
-    ////////////////////////
+
     /////     COSM     /////
-    ////////////////////////
 #ifdef USING_COSM
     cosmControlVal = 0;
     cosmShareFeedID = COSM_SHARE_FEED_ID;
@@ -239,13 +238,16 @@ void KnowPlaceHub::init()
     
 //Ethernet
 
-//    if (Ethernet.begin(mac) == 0) {
-//        hubSerial.println("Failed to configure Ethernet using DHCP");
-//        // DHCP failed, so use a fixed IP address:
-//        Ethernet.begin(mac, ip);
-//    }
+    
+    if (internetSource == INTERNET_VIA_ETHERNET && Ethernet.begin(mac) == 0) {
+        hubSerial.println("Failed to configure Ethernet using DHCP");
+        // DHCP failed, so use a fixed IP address:
+        Ethernet.begin(mac, ip);
+    }
 
 }
+    
+
 ////////////////////////
 //////     LCD     /////
 ////////////////////////
@@ -808,6 +810,23 @@ boolean KnowPlaceHub::xbeePwmTxRequest(XBeeAddress64 remoteAddress, uint16_t pwm
     
 }
 ////////////////////////////
+/////     Internet     /////
+////////////////////////////
+void KnowPlaceHub::internetDisconnect()
+{
+    switch (internetSource) {
+        case INTERNET_VIA_PROCESSING:
+            break;
+        case INTERNET_VIA_ETHERNET:
+            ethernetDisconnect();
+            break;
+        case INTERNET_VIA_WIFI:
+            break;
+        default:
+            break;
+    }
+}
+////////////////////////////
 /////     Ethernet     /////
 ////////////////////////////
 boolean KnowPlaceHub::ethernetConnect()
@@ -821,10 +840,28 @@ boolean KnowPlaceHub::ethernetConnect()
     return client.connect(server, 80);
 }
 
-void KnowPlaceHub::ethernetDisconnect()
+void KnowPlaceHub::ethernetCloseConnection()
 {
     client.println("Connection: close");
     client.println();
+}
+
+void KnowPlaceHub::ethernetDisconnect()
+{
+    hubSerial.println("Disconnecting");
+    //switch using member variable in private ethernet section
+    switch (internetSource) {
+        case INTERNET_VIA_PROCESSING:
+            break;
+        case INTERNET_VIA_ETHERNET:
+            client.stop();
+            client.flush();
+            break;
+        case INTERNET_VIA_WIFI:
+            break;
+        default:
+            break;
+    }
 }
 
 void KnowPlaceHub::ethernetClientPrintAddress64(XBeeAddress64 node_address)
@@ -839,135 +876,100 @@ void KnowPlaceHub::ethernetClientPrintAddress64(XBeeAddress64 node_address)
 
 boolean KnowPlaceHub::ethernetGetRequest()
 {
-#ifdef USING_PROCESSING_AS_INTERNET
-    hubSerial.print("<");
-    hubSerial.print("/mydata?action=getDataEmbedded");
-//    hubSerial.print("/mydata?action=getUserData");
-    hubSerial.print(">");
-    
-    //Connected - Read the page
-//    return ethernetReadPage();
-    //loop until available and hubSerial == {
-    while(!hubSerial.available() || hubSerial.read() != '{'){}
-    while (!hubSerial.available() || hubSerial.read() != '['){}
-    //skip through the heading informtion until full json is supported
-    return true;
-#else
-    if (ethernetConnect())
-    {
-        hubSerial.println("connected");
-        client.print("GET /mydata?action=getDataEmbedded");
-        client.println(" HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-        //    client.println("GET /arduino HTTP/1.1");
-        //    client.println("Host: mrlamroger.bol.ucla.edu");
-        ethernetDisconnect();
-        //Connected - Read the page
-//        return ethernetReadPage(); //go and read the output
-    }else{
-        hubSerial.println("connection failed");
+    switch (internetSource){
+        case INTERNET_VIA_PROCESSING:
+            hubSerial.print("<");
+            hubSerial.print("/mydata?action=getDataEmbedded");
+            hubSerial.print(">");
+            
+            //Connected - Read the page
+            //    return ethernetReadPage();
+            //loop until available and hubSerial == {
+            while(!hubSerial.available() || hubSerial.read() != '{'){}
+            while (!hubSerial.available() || hubSerial.read() != '['){}
+            //skip through the heading informtion until full json is supported
+            return true;
+            break;
+        case INTERNET_VIA_ETHERNET:
+            if (ethernetConnect())
+            {
+                hubSerial.println("connected");
+                client.print("GET /mydata?action=getDataEmbedded");
+                client.println(" HTTP/1.1");
+                client.println("Host: knowplace.cc");
+
+                ethernetCloseConnection();
+            }else{
+                hubSerial.println("connection failed");
+            }
+            break;
+        case INTERNET_VIA_WIFI:
+            break;
+        default:
+            break;
     }
-#endif
+
 }
 
-boolean KnowPlaceHub::ethernetPostSensorData(/*XBeeAddress64*/int node_address, /*uint32_t*/int data)
-{
-    boolean ret = false;
-#ifdef USING_PROCESSING_AS_INTERNET
-    //connect with starting character '<'
-    hubSerial.println("<");
-    hubSerial.print("POST /testlamp");
-    hubSerial.print("?node_address=");
-    hubSerial.print(String(node_address));
-    hubSerial.print("&data_value=");
-    hubSerial.print(String(data));
-    //disconnect with ending character '>'
-    hubSerial.print(">");
-#else
-    if (ethernetConnect())
-    {
-        hubSerial.println("connected");
-        client.print("POST /testlamp");
-        client.print("?node_address=");
-        client.print(String(node_address));
-        client.print("&data_value=");
-        client.print(String(data));
-        client.println(" HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-        //    client.println("GET /arduino HTTP/1.1");
-        //    client.println("Host: mrlamroger.bol.ucla.edu");
-        ethernetDisconnect();
-        
-        //Verify data was successfuly posted.
-        ethernetScrapeWebsite(node_address);
-        if (value[0].toInt() == data)
-        {
-            hubSerial.println("Successfully Posted");
-            ret= true;
-        }
-        else{
-            hubSerial.println("Post Failed"); //go and read the output
-        }
-        
-    }else{
-        hubSerial.println("connection failed");
-    }
-#endif //USING_PROCESSING_AS_INTERNET
-    return ret;
-}
+
 
 boolean KnowPlaceHub::ethernetPostDataJson(XBeeNodeMessage &dataPacket)
 {
     boolean ret = false;
-#ifdef USING_PROCESSING_AS_INTERNET
-    //connect with starting character '<'
-    hubSerial.print("<");
-    hubSerial.print("POST /mydata");
-    hubSerial.print("?address_high=");
-    hubSerial.print(String(dataPacket.getAddressH()));
-    hubSerial.print("&address_low=");
-    hubSerial.print(String(dataPacket.getAddressL()));
-    hubSerial.print("&pin_type=");
-    hubSerial.print(String(dataPacket.getDataType(0)));
-    hubSerial.print("&current_value=");
-    hubSerial.print(String(dataPacket.getData(0)));
-    
-    //disconnect with ending character '>'
-    hubSerial.print(">");
-#else
-    if (ethernetConnect())
-    {
-        hubSerial.println("connected");
-        client.print("POST /mydata");
-        client.print("?address_high=");
-        client.print(String(dataPacket.getAddressH()));
-        client.print("&address_low=");
-        client.print(String(dataPacket.getAddressL()));
-        client.print("&pin_type=");
-        client.print(String(dataPacket.getDataType(0)));
-        client.print("&current_value=");
-        client.print(String(dataPacket.getData(0)));
-        client.println(" HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-        //    client.println("GET /arduino HTTP/1.1");
-        //    client.println("Host: mrlamroger.bol.ucla.edu");
-        ethernetDisconnect();
-        
-        //Verify data was successfuly posted.
-        ethernetScrapeWebsite(node_address);
-        if (value[0].toInt() == data)
-        {
-            hubSerial.println("Successfully Posted");
-            ret= true;
-        }
-        else{
-            hubSerial.println("Post Failed"); //go and read the output
-        }
-        
-    }else{
-        hubSerial.println("connection failed");
-    }
-#endif //USING_PROCESSING_AS_INTERNET
+//    switch (internetSource){
+//        case INTERNET_VIA_PROCESSING:
+//            
+//            //connect with starting character '<'
+//            hubSerial.print("<");
+//            hubSerial.print("POST /mydata");
+//            hubSerial.print("?address_high=");
+//            hubSerial.print(String(dataPacket.getAddressH()));
+//            hubSerial.print("&address_low=");
+//            hubSerial.print(String(dataPacket.getAddressL()));
+//            hubSerial.print("&current_value=");
+//            hubSerial.print(String(dataPacket.getData(0)));
+//            
+//            //disconnect with ending character '>'
+//            hubSerial.print(">");
+//            ret = true;
+//            break;
+//        case INTERNET_VIA_ETHERNET:
+//            if (ethernetConnect())
+//            {
+//                hubSerial.println("connected");
+//                client.print("POST /mydata");
+//                client.print("?address_high=");
+//                client.print(String(dataPacket.getAddressH()));
+//                client.print("&address_low=");
+//                client.print(String(dataPacket.getAddressL()));
+//                client.print("&current_value=");
+//                client.print(String(dataPacket.getData(0)));
+//                client.println(" HTTP/1.1");
+//                client.println("Host: limitless-headland-1164.herokuapp.com");
+//                
+//                ethernetCloseConnection();
+////                
+////                //Verify data was successfuly posted.
+////                ethernetScrapeWebsite(node_address);
+////                if (value[0].toInt() == data)
+////                {
+////                    hubSerial.println("Successfully Posted");
+////                    ret= true;
+////                }
+////                else{
+////                    hubSerial.println("Post Failed"); //go and read the output
+////                }
+//                
+//            }else{
+//                hubSerial.println("connection failed");
+//            }
+//            break;
+//        case INTERNET_VIA_WIFI:
+//            break;
+//        default:
+//            break;
+//    }
+
     return ret;
     
 }
@@ -975,330 +977,216 @@ boolean KnowPlaceHub::ethernetPostDataJson(XBeeNodeMessage &dataPacket)
 boolean KnowPlaceHub::ethernetPostNewNodeAddress(XBeeAddress64 & node_address)
 {
     boolean ret = false;
-    if (ethernetConnect())
-    {
-        hubSerial.println("connected");
-        
-        client.print("POST /testlamp");
-        client.print("hub_api_key=");
-        client.print(String(hubApiKey)); //a member variable of the hub class
-        ethernetClientPrintAddress64(node_address);
-        client.println(" HTTP/1.1");
-        client.println("Host: limitless-headland-1164.herokuapp.com");
-
-        ethernetDisconnect();
-        
-        //todo: figure out specific implementation for adding
-        //Verify data was successfuly posted.
-//        ethernetScrapeWebsite(node_address);
-//        if (value[0].toInt() == data)
-//        {
-//            hubSerial.println("Successfully Posted");
+//    switch (internetSource)
+//    {
+//        case INTERNET_VIA_PROCESSING:
+//            hubSerial.println("<");
+//            
+//            hubSerial.print("POST /testlamp");
+//            hubSerial.print("hub_api_key=");
+//            hubSerial.print(String(hubApiKey)); //a member variable of the hub class
+//            ethernetClientPrintAddress64(node_address);
+//            hubSerial.print(">");
+//            
+//            //todo: figure out specific implementation for adding
+//            //Verify data was successfuly posted.
+//            //        ethernetScrapeWebsite(node_address);
+//            //        if (value[0].toInt() == data)
+//            //        {
+//            //            hubSerial.println("Successfully Posted");
+//            //            ret = true;
+//            //        }
+//            //        else
+//            //        {
+//            //            hubSerial.println("Post Failed"); //go and read the output
+//            //        }
 //            ret = true;
-//        }
-//        else
-//        {
-//            hubSerial.println("Post Failed"); //go and read the output
-//        }
-        ret = true;
-    }
-    else
-    {
-        hubSerial.println("connection failed");
-    }
+//            break;
+//        case INTERNET_VIA_ETHERNET:
+//            if (ethernetConnect())
+//            {
+//                hubSerial.println("connected");
+//                
+//                client.print("POST /testlamp");
+//                client.print("hub_api_key=");
+//                client.print(String(hubApiKey)); //a member variable of the hub class
+//                ethernetClientPrintAddress64(node_address);
+//                client.println(" HTTP/1.1");
+//                client.println("Host: limitless-headland-1164.herokuapp.com");
+//                
+//                ethernetCloseConnection();
+//                
+//                //todo: figure out specific implementation for adding
+//                //Verify data was successfuly posted.
+//                //        ethernetScrapeWebsite();
+//                //        if (value[0].toInt() == data)
+//                //        {
+//                //            hubSerial.println("Successfully Posted");
+//                //            ret = true;
+//                //        }
+//                //        else
+//                //        {
+//                //            hubSerial.println("Post Failed"); //go and read the output
+//                //        }
+//                ret = true;
+//            }
+//            else
+//            {
+////                hubSerial.println("connection failed");
+//            }
+//            break;
+//        case INTERNET_VIA_WIFI:
+//            break;
+//        default:
+//            break;
+//    }
     return ret;
 }
 
-boolean KnowPlaceHub::ethernetReadPage(){
-    //read the page, and capture & return everything between '[' and ']'
-    
-    stringPos = 0;
-    memset( &inString, 0, 32 ); //clear inString memory
-    count = 0;
-    boolean settingVariable = true;
-    
-    while(true){
-        if (client.available()) {
-            hubSerial.println("Client is available");
-            while (char c = client.read()) {
-                if (c == '>') {
-                    client.stop();
-                    client.flush();
-                    hubSerial.println(inString);
-                    hubSerial.println("disconnecting.");
-                    return false;
-                } else
-                    
-                    if (c == '[' ) { //'[' is our begining character
-                        startRead = true; //Ready to start reading the part
-                        memset( &inString, 0, 32 );
-                        stringPos = 0;
-                    } else if(startRead){
-                        if(c != ']'){ //']' is our ending character
-                            //Serial.print(c);
-                            inString[stringPos] = c;
-                            stringPos ++;
-                        } else {
-                            //          hubSerial.println(inString);
-                            //          //got what we need here! We can disconnect now
-                            //          if(readingFirst){
-                            //            String temp = inString;
-                            //            hubSerial.println(temp);
-                            //            variable[count] = inString;
-                            //            readingFirst = false;
-                            //          } else {
-                            //            String temp = inString;
-                            //            hubSerial.println(temp);
-                            //            value[count] = temp;
-                            //            readingFirst = true;
-                            //          }
-                            //          startRead = false;
-                            
-                            if (settingVariable == true) {
-                                variable[count] = inString;
-                                startRead = false;
-                                settingVariable = false;
-                            } else {
-                                value[count] = inString;
-                                startRead = false;
-                                count = count + 1;
-                                settingVariable = true;
-                            }
-                            //Serial.println(variable[count]);
-                            //count = count + 1;
-                            //memset( &inString, 0, 32 );
-                            //Serial.println("Test");
-                            //startRead = false;
-                            //client.stop();
-                            //client.flush();
-                            //Serial.println("disconnecting.");
-                            //return variable[count - 1];
-                        }
-                    }
-            }
-        } else {
-            hubSerial.println("Client is not available");
-            delay(5000);
-        }
-    }
-}
 
-boolean KnowPlaceHub::ethernetReadPageJson(XBeeNodeMessage &dataPacket){
-    //read the page, and capture & return everything between '[' and ']'
-    int stringSize = 100;
-    char jsonString[stringSize];
-
-    
-    
-    boolean startRead = false;
-    uint8_t stringPos = 0;
-    
-//    uint32_t addressH = 0;
-//    uint32_t addressL = 0;
-    uint8_t tempPin = 0;
-    int tempType = -1;
-    uint8_t tempData = 0;
-    char c = '\0';
-    hubSerial.print("starting readpagejson: ");
-#ifdef USING_PROCESSING_AS_INTERNET
-
-    while (hubSerial.available() && stringPos < stringSize-1) {
-        c = hubSerial.read();
-
-        if(startRead)
-        {
-            
-            if(c != '}')
+char KnowPlaceHub::internetReadChar()
+{
+    switch (internetSource) {
+        case INTERNET_VIA_PROCESSING:
+            if (hubSerial.available())
             {
-                if (c != '\"') {
-                    jsonString[stringPos] = c;
-                    stringPos++;
-                }
+                return hubSerial.read();
+            }
+            
+            break;
+        case INTERNET_VIA_ETHERNET:
+            if (client.available())
+            {
+                char c = client.read();
+                hubSerial.print(c);
+                return c;
             }
             else
             {
-                //Serial.print(c);
-                startRead = false;
-                jsonString[stringPos++] = c;
-                jsonString[stringPos++] = '\0';
-//                hubSerial.print("ending: ");
-//                hubSerial.print(stringPos);
-                break;
+                hubSerial.println("client unavailable");
             }
-        }
-        else if (c == '{' )
-        { //'{' is our begining character
-            startRead = true; //Ready to start reading the part
-            memset( jsonString, 0, stringSize);
-            stringPos = 0;
-            jsonString[stringPos] = c;
-            stringPos++;
-        }
-        else if (c == '}') {
-            hubSerial.print("retfalse!");
-            return false;
-        }
-        else
-        {
-            continue; //do nothing
-        }
+            break;
+        case INTERNET_VIA_WIFI:
+            //not yet supported
+            break;
+        default:
+            break;
     }
+    return 0;
+}
 
-
-
-#else
-    while(true){
-        if (client.available()) {
-            hubSerial.println("Client is available");
-            while (char c = client.read()) {
-                if(startRead)
+boolean KnowPlaceHub::ethernetReadPage(XBeeNodeMessage &dataPacket){
+    //read the page, and capture & return everything between '[' and ']'
+    boolean startNode = false,
+            startData = false;
+    const int stringSize = 11;
+    int stringPos = 0;
+    char jsonString[stringSize];
+    char c = '\0',
+         paramCode = '\0';
+    
+    uint8_t tempPin = 0;
+    int tempType = -1;
+    uint8_t tempData = 0;
+    
+    
+    while ((c = internetReadChar()) != 0 && stringPos < stringSize)
+    {
+        //reading of a node's data in progress
+        if(startNode)
+        {
+            
+                //skip over quotes
+                if (c != '\"' && paramCode == '\0') {
+                    paramCode = c;
+                    memset( jsonString, 0, stringSize);
+                    stringPos = 0;
+                    hubSerial.print("param: ");
+                    hubSerial.println(paramCode);
+                }
+                else if (c == '\"' || c == ':')
                 {
-                    if(c != '}')
+                    //skip these characters
+                    continue;
+                }
+                else if (paramCode != '\0')
+                {
+                    if(c == ',' || c == '}')
                     {
-                        jsonString[stringPos++] = c;
+                        jsonString[stringPos] = '\0'; //safety in case memset failed
+                        hubSerial.println(jsonString);
+                        
+                        if (paramCode == 'H')
+                        {
+                            dataPacket.setAddressH(strtoul(jsonString, NULL, 16)); //store the address
+                        }
+                        else if (paramCode == 'L')
+                        {
+                                dataPacket.setAddressL(strtoul(jsonString, NULL, 16)); //store the address
+                        }
+                        else if (paramCode == 'T')
+                        {
+                            hubSerial.print("type: ");
+                            hubSerial.println(tempType);
+                            if (strcmp("control_B",jsonString) == 0) {
+                                tempType = DATA_BINARY;
+                            }
+                            else if (strcmp("control_V",jsonString) == 0) {
+                                tempType = DATA_INT;
+                                
+                            }
+                            if(tempType == DATA_BINARY)
+                            {
+                                tempData +=4;
+                            }
+                        }
+                        else if (paramCode == 'C')
+                        {
+                            tempData = atoi(jsonString);
+
+                        }
+                        //reset for the next parameter
+                        paramCode = '\0';
+                        
+                        //end of node (nested json object)
+                        if(c == '}')
+                        {
+                            dataPacket.setData(tempPin, tempType, tempData);
+                            startNode = false; //probably not necessary
+                            return true;
+                        }
                     }
                     else
                     {
-                        //Serial.print(c);
-                        jsonString[stringPos++] = c;
-                        jsonString[stringPos++] = '\0';
-                        break;
+                        //make sure there's a space for the last null byte
+                        if(stringPos < stringSize-1)
+                        {
+                            jsonString[stringPos++] = c;
+                        }
                     }
-                }
-                else if (c == '{' )
-                { //'{' is our begining character
-                    startRead = true; //Ready to start reading the part
-                    memset( jsonString, 0, 32 );
-                    stringPos = 0;
-                    jsonString[stringPos++] = c;
-                }
-                else if (c == '>') {
-                    client.stop();
-                    client.flush();
-                    hubSerial.println(inString);
-                    hubSerial.println("disconnecting.");
-                    return false;
-                }
-                else
-                {
-                    continue; //do nothing
-                }
+                
             }
-        } else {
-            hubSerial.println("Client is not available");
-            delay(5000);
-        }
-    }
-#endif //USING_PROCESSING_AS_INTERNET
 
-//    hubSerial.println(jsonString);
-//    token_list_t *tokenList = NULL;
-//    char* jsonParam;
-//    tokenList = create_token_list(stringSize);//I don't know what this number is yet
-//    hubSerial.print(json_to_token_list(jsonString, tokenList));
-    char tempString[10];
-    char *iter = NULL;
-    memset(tempString,0,10);
-    
-    iter = strchr(jsonString, 'H');
-    iter+=2;
-    for (int i = 0; i < 9; i++,iter++) {
-        if(iter[0] == ',')
-        {
-            tempString[i] = '\0';
-            break;
         }
+        //start of a node
+        else if(c == '{')
+        {
+            startNode = true; //Ready to start reading the part
+        }
+        //should only be reached at the end of a json
+        else if(c == '}')
+        {
+            internetDisconnect();
+            return false;
+        }
+        //unimportant characters
         else
         {
-            tempString[i] = iter[0];
+            continue;
         }
     }
-    
-//    jsonParam = json_get_value(tokenList,"address_high");
-    dataPacket.setAddressH(strtoul(tempString, NULL, 16)); //store the address
-    
-    hubSerial.println(dataPacket.getAddressH());
-//    printf("jsonParam: %s\n", tempString);
-//
-//    jsonParam = json_get_value(tokenList,"address_low");
-    
-    memset(tempString,0,10);
-    
-    iter = strchr(jsonString, 'L');
-    iter+=2;
-    for (int i = 0; i < 9; i++,iter++) {
-        if(iter[0] == ',')
-        {
-            tempString[i] = '\0';
-            break;
-        }
-        else
-        {
-            tempString[i] = iter[0];
-        }
-    }
-    dataPacket.setAddressL(strtoul(tempString, NULL, 16)); //store the address
-//
-////    jsonParam = json_get_value(tokenList,"pinNumber");
-////    tempPin = atoi(jsonParam);
-//
-    memset(tempString,0,10);
-    
-    iter = strchr(jsonString, 'T');
-    iter+=2;
-    for (int i = 0; i < 9; i++,iter++) {
-        if(iter[0] == '}')
-        {
-            tempString[i] = '\0';
-            break;
-        }
-        else
-        {
-            tempString[i] = iter[0];
-        }
-    }
-//    jsonParam = json_get_value(tokenList,"type");
-//    hubSerial.print("The json type param: ");
-////    hubSerial.print(jsonParam);
-    if (strcmp("control_B",tempString) == 0) {
-        tempType = DATA_BINARY;
-    }
-    else if (strcmp("control_V",tempString) == 0) {
-        tempType = DATA_INT;
-    }
-//    hubSerial.print(jsonParam);
-//    hubSerial.print(jsonParam);
-//
-    memset(tempString,0,10);
-    
-    iter = strchr(jsonString, 'C');
-    iter+=2;
-    for (int i = 0; i < 9; i++,iter++) {
-        if(iter[0] == ',')
-        {
-            tempString[i] = '\0';
-            break;
-        }
-        else
-        {
-            tempString[i] = iter[0];
-        }
-    }
-//    jsonParam = json_get_value(tokenList,"current_value");
-    tempData = atoi(tempString);
-    if(tempType == DATA_BINARY)
-    {
-        tempData +=4;
-    }
-//
-
-//
-    dataPacket.setData(tempPin, tempType, tempData); //store the data
-//
-//    release_token_list(tokenList);
-//    aJson.delete(jsonObject);
-    return true;
-    
+    //only gets here if json was not terminated correctly
+    return false;
 }
 
 void KnowPlaceHub::ethernetScrapeWebsite()
@@ -1308,21 +1196,23 @@ void KnowPlaceHub::ethernetScrapeWebsite()
         
 
         //node message is defined in the header
-        while (ethernetReadPageJson(nodeMessage))
+        while (ethernetReadPage(nodeMessage))
         {
-            hubSerial.println(nodeMessage.getAddressH());
-            hubSerial.println(nodeMessage.getAddressL());
-            hubSerial.println(nodeMessage.getDataType(0));
-            hubSerial.println(nodeMessage.getData(0));
-            if(nodeMessage.getAddressH() == 238080)
+//            hubSerial.println(nodeMessage.getAddressH());
+//            hubSerial.println(nodeMessage.getAddressL());
+//            hubSerial.println(nodeMessage.getDataType(0));
+//            hubSerial.println(nodeMessage.getData(0));
+            
+            if(nodeMessage.getAddressL() == 1076974952)
             {
-                //skip
-            }
-            else if(nodeMessage.getAddressL() == 1076974952)
-            {
+
                 lcd.setCursor(0,0);
                 lcd.print("Fan  ");
                 lcdPrintAnalog(nodeMessage.getData(0));
+                for(int i = 8; i < 16; i++)
+                {
+                    lcd.print(" ");
+                }
             }
             else if (nodeMessage.getAddressL() == 1076974949)
             {
@@ -1330,33 +1220,40 @@ void KnowPlaceHub::ethernetScrapeWebsite()
                 lcd.print("Lamp ");
                 if(nodeMessage.getData(0) == 4)
                 {
-                    lcd.print("OFF");
+                    lcd.print("OFF ");
+
                 }
                 else if (nodeMessage.getData(0) == 5)
                 {
-                    lcd.print("ON ");
+                    lcd.print("ON  ");
                 }
                 else
                 {
                     lcdPrintAnalog(nodeMessage.getData(0));
                 }
+                //overwrite old characters
+                //this method avoids blinking when using lcd.clear
+                for(int i = 8; i < 16; i++)
+                {
+                    lcd.print(" ");
+                }
             }
-//            lcd.print(nodeMessage.getDataType(0));
-            if(nodeMessage.getAddressH() == 238080)
+            
+            if(nodeMessage.getAddressL() == 1076974952 ||
+               nodeMessage.getAddressL() == 1076974949)
             {
-                //skip
-            }
-            else if(nodeMessage.getDataType(0) == DATA_BINARY)
-            {
-                xbeeControlRemotePins(nodeMessage.getAddress(), nodeMessage.getData(0));
-            }
-            else if (nodeMessage.getDataType(0) == DATA_INT)
-            {
-                xbeePwmTxRequest(nodeMessage.getAddress(), nodeMessage.getData(0));
-            }
-            else
-            {
-                
+                if(nodeMessage.getDataType(0) == DATA_BINARY)
+                {
+                    xbeeControlRemotePins(nodeMessage.getAddress(), nodeMessage.getData(0));
+                }
+                else if (nodeMessage.getDataType(0) == DATA_INT)
+                {
+                    xbeePwmTxRequest(nodeMessage.getAddress(), nodeMessage.getData(0));
+                }
+                else
+                {
+                    
+                }
             }
         }
     }
@@ -1366,9 +1263,7 @@ void KnowPlaceHub::ethernetScrapeWebsite()
     }
 }
 
-//<<<<<<< HEAD
-//=======
-//>>>>>>> cf98246ed2ae4876dfaecc6ad4a9f6a5418e0afd
+
 int KnowPlaceHub::getDeviceStatus(/*XBeeAddress64*/int node_address)
 {
     int numDevices = count % 3; //Count is the number of entries.

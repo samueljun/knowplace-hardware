@@ -52,7 +52,7 @@ void setup()
 {
   //starts the serial port, lcd, xbee, and ethernet
   hub.init();
-//  hub.lcd.print("KnowPlace v1.0");
+  hub.lcd.print("KnowPlace v1.0");
 pinMode(INTERNAL_LED, OUTPUT);
 
 
@@ -94,14 +94,6 @@ delay(1000);
 void controlFromWeb()
 {
   hub.ethernetScrapeWebsite();
-//  hub.ethernetConnectAndRead(node_address);
-//  int pinVal = 0x4 + hub.getDeviceStatus(node_address);
-//  hub.hubSerial.print("pinVal will be: ");
-//  hub.hubSerial.println(pinVal);
-//  if(pinVal == 4 || pinVal == 5)
-//  {
-//    hub.xbeeControlRemotePins(xbeeNodeAddress[node_address], pinVal );
-//  }
 }
 
 int senseAndControl()
